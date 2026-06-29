@@ -1,11 +1,9 @@
 // ============ ФЛАГИ СТРАН ============
-const FLAG_ENGLAND = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}';
-const FLAG_SCOTLAND = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}';
-const FLAG_WALES = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E006E}\u{E007F}';
+const FLAG_UK = '\u{1F1EC}\u{1F1E7}';
 const FLAGS = [
   // Европа
-  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_ENGLAND, n:'Англия'}, {f:FLAG_SCOTLAND, n:'Шотландия'},
-  {f:FLAG_WALES, n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_UK, n:'Англия'}, {f:FLAG_UK, n:'Шотландия'},
+  {f:FLAG_UK, n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
   {f:'🇮🇹', n:'Италия'}, {f:'🇵🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇧🇪', n:'Бельгия'},
   {f:'🇦🇹', n:'Австрия'}, {f:'🇨🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
   {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
@@ -102,7 +100,7 @@ function selectFlag(flag) {
 // ============ ПРЕСЕТЫ ТУРНИРОВ ============
 const TOURNAMENT_PRESETS = [
   { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: FLAG_ENGLAND, name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: FLAG_UK, name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
@@ -463,10 +461,10 @@ function migrateFlags(data) {
     'Real Betiz': '🇪🇸', 'Bacelona': '🇪🇸', 'R-Madrid': '🇪🇸',
     'Atlet Madrid': '🇪🇸', 'Vilarreal': '🇪🇸', 'Sevila': '🇪🇸',
     'RB Leipzi': '🇩🇪', 'Veronaa': '🇮🇹', 'FK Soch': '🇷🇺',
-    'WestHan': FLAG_ENGLAND, 'Roma': '🇮🇹', 'Arsnal': FLAG_ENGLAND,
+    'WestHan': FLAG_UK, 'Roma': '🇮🇹', 'Arsnal': FLAG_UK,
     'Monacco': '🇲🇨', 'Allmeria': '🇪🇸', 'Vallencia': '🇪🇸',
     'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸',
-    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': FLAG_SCOTLAND,
+    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': FLAG_UK,
     'CZE': '🇨🇿', 'ROM': '🇷🇴'
   };
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
