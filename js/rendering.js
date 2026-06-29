@@ -895,8 +895,7 @@ function openQuickSeasonModal() {
   try {
     quickTournamentCount = 0;
     const teamSelect = document.getElementById('qs-team');
-    const teams = getSortedTeams();
-    teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}</option>`).join('');
+    teamSelect.innerHTML = globalTeams.map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}${t.isMe ? ' ★' : ''}</option>`).join('');
     document.getElementById('qs-year').value = seasons.length > 0 ? (Math.max(...seasons.map(s => Number(s.year))) + 1) : 2025;
     document.getElementById('qs-tournaments').innerHTML = '';
     addQuickTournament();
@@ -918,13 +917,20 @@ function addQuickTournament() {
   const div = document.createElement('div');
   div.className = 'qs-tournament';
   div.id = id;
+  const presetOptions = TOURNAMENT_PRESETS.map(p => `<option value="${escapeHtml(p.name)}" data-emoji="${escapeHtml(p.emoji)}">${p.emoji} ${escapeHtml(p.name)}</option>`).join('');
+  const emojiOptions = TOURNAMENT_EMOJIS.map(e => `<option value="${escapeHtml(e.v)}">${e.l}</option>`).join('');
   div.innerHTML = `
     <div class="qs-t-header">
       <strong>Турнир ${quickTournamentCount}</strong>
       <button class="btn btn-danger btn-sm" onclick="this.closest('.qs-tournament').remove()">✕</button>
     </div>
     <div class="qs-t-grid">
-      <div class="field-group"><span class="field-label">Турнир</span><select class="qs-t-name">${TOURNAMENT_PRESETS.map(p => `<option value="${escapeHtml(p.name)}">${p.emoji} ${escapeHtml(p.name)}</option>`).join('')}<option value="custom">📝 Другой</option></select></div>
+      <div class="field-group"><span class="field-label">Турнир</span><select class="qs-t-name" onchange="toggleCustomName(this)">${presetOptions}<option value="__custom__">📝 Свой турнир</option></select>
+        <div class="qs-custom-fields" style="display:none; margin-top:6px;">
+          <select class="qs-t-emoji" style="margin-bottom:4px;">${emojiOptions}</select>
+          <input type="text" class="qs-t-custom" placeholder="Название турнира">
+        </div>
+      </div>
       <div class="field-group"><span class="field-label">Результат</span><select class="qs-result"><option value="champ">🏆 Чемпион</option><option value="silver">🥈 2 место</option><option value="other">Другое</option></select></div>
       <div class="field-group"><span class="field-label">Матчей</span><input type="text" inputmode="numeric" class="qs-matches" placeholder="0"></div>
       <div class="field-group"><span class="field-label">Голов</span><input type="text" inputmode="numeric" class="qs-goals" placeholder="0"></div>
@@ -936,6 +942,16 @@ function addQuickTournament() {
     </div>
   `;
   container.appendChild(div);
+}
+
+function toggleCustomName(select) {
+  const fields = select.parentElement.querySelector('.qs-custom-fields');
+  if (select.value === '__custom__') {
+    fields.style.display = 'block';
+    fields.querySelector('.qs-t-custom').focus();
+  } else {
+    fields.style.display = 'none';
+  }
 }
 
 function saveQuickSeason() {
@@ -956,7 +972,10 @@ function saveQuickSeason() {
   const newTournamentOrder = [];
   
   tournamentDivs.forEach((div, idx) => {
-    const name = div.querySelector('.qs-t-name').value;
+    const nameSelect = div.querySelector('.qs-t-name');
+    const isCustom = nameSelect.value === '__custom__';
+    const name = isCustom ? (div.querySelector('.qs-t-custom').value || 'Мой турнир') : nameSelect.value;
+    const emoji = isCustom ? (div.querySelector('.qs-t-emoji').value || '🏆') : (nameSelect.selectedOptions[0]?.dataset?.emoji || '🏆');
     const result = div.querySelector('.qs-result').value;
     const matches = parseIntSafe(div.querySelector('.qs-matches').value);
     const goals = parseIntSafe(div.querySelector('.qs-goals').value);
@@ -966,9 +985,8 @@ function saveQuickSeason() {
     const rating = parseNum(div.querySelector('.qs-rating').value);
     const boot = div.querySelector('.qs-boot').checked;
     
-    const preset = TOURNAMENT_PRESETS.find(p => p.name === name);
+    const preset = isCustom ? null : TOURNAMENT_PRESETS.find(p => p.name === name);
     const key = 'quick_' + year + '_' + idx;
-    const emoji = preset ? preset.emoji : '🏆';
     const rounds = preset ? preset.rounds : matches;
     const hasPlayoff = preset ? preset.hasPlayoff : (result !== 'other');
     
