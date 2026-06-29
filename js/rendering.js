@@ -321,7 +321,6 @@ function renderGlobalTeams() {
           debouncedSave();
         } else if (field === 'isMe') {
           globalTeams[i].isMe = e.target.checked;
-          syncTeamAcrossSeasons(teamId, 'isMe', e.target.checked);
           renderGlobalTeams();
           tournamentOrder.forEach(k => renderTeams(k));
           debouncedSave();

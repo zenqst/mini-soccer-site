@@ -648,7 +648,7 @@ function renderSeasonsList() {
   seasons.forEach((s, idx) => {
     const isCurrent = idx === currentSeasonIdx;
     const tCount = (s.tournamentOrder || []).length;
-    const teamCount = (s.globalTeams || []).length;
+    const teamCount = (s.globalTeams || []).filter(t => t.visible !== false).length;
     const item = document.createElement('div');
     item.className = 'season-list-item' + (isCurrent ? ' current' : '');
     item.innerHTML = `
