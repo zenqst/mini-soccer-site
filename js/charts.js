@@ -524,8 +524,9 @@ function renderCareer() {
   const bestTournament = Object.entries(tournamentStats).sort((a, b) => b[1].trophies - a[1].trophies || b[1].wins - a[1].wins)[0];
 
   const formatSeasons = (seasons) => {
-    if (seasons.length === 1) return String(seasons[0]);
-    return `${seasons[0]}–${seasons[seasons.length - 1]}`;
+    const sorted = [...seasons].sort((a, b) => Number(a) - Number(b));
+    if (sorted.length === 1) return String(sorted[0]);
+    return `${sorted[0]}–${sorted[sorted.length - 1]}`;
   };
 
   let html = '';

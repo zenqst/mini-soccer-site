@@ -997,7 +997,7 @@ function saveQuickSeason() {
       newTournaments[key].pointsPerDraw = preset.ptsDraw;
       newTournaments[key].isInternational = preset.international;
     }
-    newTournaments[key].teams = [{ teamId, w: 0, d: 0, l: 0, h2h: [0, 0, 0] }];
+    newTournaments[key].teams = [{ teamId, w: matches, d: 0, l: 0, h2h: [0, 0, 0] }];
     newTournaments[key].summary = { goals, assists, mvp, accuracy, rating };
     newTournaments[key].topScorer = boot ? 1 : null;
     if (result === 'champ') {
