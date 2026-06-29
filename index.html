@@ -401,7 +401,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.3.0</span>
+    <span>Генератор турнирных таблиц v2.3.1</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -840,17 +840,17 @@ function getSortedTeams(tournamentKey) {
     if (a.isMe && !b.isMe) return -1;
     if (!a.isMe && b.isMe) return 1;
 
-    const aNew = !teamsInAnyTournament.has(a.id);
-    const bNew = !teamsInAnyTournament.has(b.id);
-    if (aNew && !bNew) return -1;
-    if (!aNew && bNew) return 1;
-
     if (!isInternational && tournamentEmoji) {
       const aMatch = a.flag === tournamentEmoji;
       const bMatch = b.flag === tournamentEmoji;
       if (aMatch && !bMatch) return -1;
       if (!aMatch && bMatch) return 1;
     }
+
+    const aNew = !teamsInAnyTournament.has(a.id);
+    const bNew = !teamsInAnyTournament.has(b.id);
+    if (aNew && !bNew) return -1;
+    if (!aNew && bNew) return 1;
 
     if (isInternational) {
       const aInThis = countryCountInTournament[a.flag] || 0;
