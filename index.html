@@ -241,6 +241,9 @@
   .preset-card:hover { background: var(--highlight); border-color: #fde68a; }
   .preset-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
   .preset-meta { font-size: 11px; color: var(--text-muted); }
+
+  .top-stats { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; margin-bottom: 16px; }
+  .top-stats-title { font-size: 14px; font-weight: 600; width: 100%; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -535,45 +538,102 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+// ============ КУКИ ============
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '=([^;]*)');
+  return v ? decodeURIComponent(v[2]) : null;
+}
+
+function deleteCookie(name) {
+  document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+}
+
+function saveToCookies() {
+  try {
+    syncCurrentSeason();
+    const data = {
+      version: 4,
+      seasons: JSON.parse(JSON.stringify(seasons)),
+      currentSeasonIdx
+    };
+    const json = JSON.stringify(data);
+    const chunkSize = 3500;
+    const chunks = Math.ceil(json.length / chunkSize);
+    setCookie('tournamentApp_c0', chunks.toString(), 365);
+    for (let i = 0; i < chunks; i++) {
+      setCookie('tournamentApp_c' + (i + 1), json.substring(i * chunkSize, (i + 1) * chunkSize), 365);
+    }
+  } catch (e) { console.warn('Cookie save failed', e); }
+}
+
+function loadFromCookies() {
+  try {
+    const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
+    if (chunkCount <= 0) return null;
+    let json = '';
+    for (let i = 1; i <= chunkCount; i++) {
+      const chunk = getCookie('tournamentApp_c' + i);
+      if (chunk === null) return null;
+      json += chunk;
+    }
+    return JSON.parse(json);
+  } catch (e) { console.warn('Cookie load failed', e); return null; }
+}
+
 // ============ ФЛАГИ СТРАН ============
 const FLAGS = [
   // Европа
-  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:'🏴󠁧󠁥󠁮󠁧󠁿', n:'Англия'}, {f:'🏴󠁢󠁳󠁴󠁿', n:'Шотландия'},
-  {f:'🏴󠁧󠁢󠁷󠁬󠁿', n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
-  {f:'🇮🇹', n:'Италия'}, {f:'🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇪', n:'Бельгия'},
-  {f:'🇦🇹', n:'Австрия'}, {f:'🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:'🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}', n:'Англия'}, {f:'🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}', n:'Шотландия'},
+  {f:'🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E006E}\u{E007F}', n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇮🇹', n:'Италия'}, {f:'🇵🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇧🇪', n:'Бельгия'},
+  {f:'🇦🇹', n:'Австрия'}, {f:'🇨🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
   {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
-  {f:'🇷🇴', n:'Румыния'}, {f:'🇬🇷', n:'Греция'}, {f:'🇹🇷', n:'Турция'}, {f:'🇪', n:'Швеция'},
+  {f:'🇷🇴', n:'Румыния'}, {f:'🇬🇷', n:'Греция'}, {f:'🇹🇷', n:'Турция'}, {f:'🇸🇪', n:'Швеция'},
   {f:'🇩🇰', n:'Дания'}, {f:'🇳🇴', n:'Норвегия'}, {f:'🇫🇮', n:'Финляндия'}, {f:'🇭🇺', n:'Венгрия'},
-  {f:'🇧🇬', n:'Болгария'}, {f:'🇰', n:'Словакия'}, {f:'🇸🇮', n:'Словения'}, {f:'🇦🇱', n:'Албания'},
+  {f:'🇧🇬', n:'Болгария'}, {f:'🇸🇰', n:'Словакия'}, {f:'🇸🇮', n:'Словения'}, {f:'🇦🇱', n:'Албания'},
   {f:'🇲🇰', n:'С. Македония'}, {f:'🇲🇩', n:'Молдова'}, {f:'🇧🇾', n:'Беларусь'}, {f:'🇱🇹', n:'Литва'},
-  {f:'🇱🇻', n:'Латвия'}, {f:'🇪', n:'Эстония'}, {f:'🇮🇸', n:'Исландия'}, {f:'🇱🇺', n:'Люксембург'},
-  {f:'🇲🇹', n:'Мальта'}, {f:'🇾', n:'Кипр'}, {f:'🇦🇩', n:'Андорра'}, {f:'🇲🇨', n:'Монако'},
+  {f:'🇱🇻', n:'Латвия'}, {f:'🇪🇪', n:'Эстония'}, {f:'🇮🇸', n:'Исландия'}, {f:'🇱🇺', n:'Люксембург'},
+  {f:'🇲🇹', n:'Мальта'}, {f:'🇨🇾', n:'Кипр'}, {f:'🇦🇩', n:'Андорра'}, {f:'🇲🇨', n:'Монако'},
   {f:'🇱🇮', n:'Лихтенштейн'}, {f:'🇸🇲', n:'Сан-Марино'}, {f:'🇻🇦', n:'Ватикан'},
+  {f:'🇧🇦', n:'Босния и Герцеговина'}, {f:'🇲🇪', n:'Черногория'}, {f:'🇽🇰', n:'Косово'},
   // Америка
-  {f:'🇧🇷', n:'Бразилия'}, {f:'🇷', n:'Аргентина'}, {f:'🇺🇾', n:'Уругвай'}, {f:'🇨', n:'Чили'},
-  {f:'🇨🇴', n:'Колумбия'}, {f:'🇵🇪', n:'Перу'}, {f:'🇪', n:'Эквадор'}, {f:'🇵🇾', n:'Парагвай'},
-  {f:'🇻🇪', n:'Венесуэла'}, {f:'🇧🇴', n:'Боливия'}, {f:'🇽', n:'Мексика'}, {f:'🇺🇸', n:'США'},
+  {f:'🇧🇷', n:'Бразилия'}, {f:'🇦🇷', n:'Аргентина'}, {f:'🇺🇾', n:'Уругвай'}, {f:'🇨🇱', n:'Чили'},
+  {f:'🇨🇴', n:'Колумбия'}, {f:'🇵🇪', n:'Перу'}, {f:'🇪🇨', n:'Эквадор'}, {f:'🇵🇾', n:'Парагвай'},
+  {f:'🇻🇪', n:'Венесуэла'}, {f:'🇧🇴', n:'Боливия'}, {f:'🇲🇽', n:'Мексика'}, {f:'🇺🇸', n:'США'},
   {f:'🇨🇦', n:'Канада'}, {f:'🇨🇷', n:'Коста-Рика'}, {f:'🇵🇦', n:'Панама'}, {f:'🇯🇲', n:'Ямайка'},
   {f:'🇭🇳', n:'Гондурас'}, {f:'🇬🇹', n:'Гватемала'}, {f:'🇨🇺', n:'Куба'}, {f:'🇩🇴', n:'Доминикана'},
-  {f:'🇭🇹', n:'Гаити'}, {f:'🇹🇹', n:'Тринидад и Тобаго'},
+  {f:'🇭🇹', n:'Гаити'}, {f:'🇹🇹', n:'Тринидад и Тобаго'}, {f:'🇨🇼', n:'Кюрасао'}, {f:'🇸🇷', n:'Суринам'},
   // Азия
-  {f:'🇯', n:'Япония'}, {f:'🇷', n:'Южная Корея'}, {f:'🇨🇳', n:'Китай'}, {f:'🇮🇳', n:'Индия'},
-  {f:'🇸🇦', n:'Саудовская Аравия'}, {f:'🇪', n:'ОАЭ'}, {f:'🇶🇦', n:'Катар'}, {f:'🇮🇷', n:'Иран'},
-  {f:'🇮🇶', n:'Ирак'}, {f:'🇸🇾', n:'Сирия'}, {f:'🇱🇧', n:'Ливан'}, {f:'🇱', n:'Израиль'},
+  {f:'🇯🇵', n:'Япония'}, {f:'🇰🇷', n:'Южная Корея'}, {f:'🇨🇳', n:'Китай'}, {f:'🇮🇳', n:'Индия'},
+  {f:'🇸🇦', n:'Саудовская Аравия'}, {f:'🇦🇪', n:'ОАЭ'}, {f:'🇶🇦', n:'Катар'}, {f:'🇮🇷', n:'Иран'},
+  {f:'🇮🇶', n:'Ирак'}, {f:'🇸🇾', n:'Сирия'}, {f:'🇱🇧', n:'Ливан'}, {f:'🇮🇱', n:'Израиль'},
   {f:'🇹🇭', n:'Таиланд'}, {f:'🇻🇳', n:'Вьетнам'}, {f:'🇮🇩', n:'Индонезия'}, {f:'🇲🇾', n:'Малайзия'},
-  {f:'🇵🇭', n:'Филиппины'}, {f:'🇿', n:'Казахстан'}, {f:'🇺🇿', n:'Узбекистан'}, {f:'🇦', n:'Афганистан'},
-  {f:'🇵🇰', n:'Пакистан'}, {f:'🇧', n:'Бангладеш'}, {f:'🇱🇰', n:'Шри-Ланка'}, {f:'🇲🇲', n:'Мьянма'},
+  {f:'🇵🇭', n:'Филиппины'}, {f:'🇰🇿', n:'Казахстан'}, {f:'🇺🇿', n:'Узбекистан'}, {f:'🇦🇫', n:'Афганистан'},
+  {f:'🇵🇰', n:'Пакистан'}, {f:'🇧🇩', n:'Бангладеш'}, {f:'🇱🇰', n:'Шри-Ланка'}, {f:'🇲🇲', n:'Мьянма'},
   {f:'🇰🇬', n:'Кыргызстан'}, {f:'🇹🇯', n:'Таджикистан'}, {f:'🇹🇲', n:'Туркменистан'}, {f:'🇲🇳', n:'Монголия'},
+  {f:'🇹🇼', n:'Тайвань'}, {f:'🇭🇰', n:'Гонконг'}, {f:'🇧🇳', n:'Бруней'}, {f:'🇰🇭', n:'Камбоджа'},
+  {f:'🇳🇵', n:'Непал'}, {f:'🇱🇦', n:'Лаос'}, {f:'🇹🇱', n:'Восточный Тимор'},
   // Африка
-  {f:'🇬', n:'Египет'}, {f:'🇲🇦', n:'Марокко'}, {f:'🇩', n:'Алжир'}, {f:'🇹🇳', n:'Тунис'},
-  {f:'🇳', n:'Нигерия'}, {f:'🇨🇲', n:'Камерун'}, {f:'🇬🇭', n:'Гана'}, {f:'🇸🇳', n:'Сенегал'},
+  {f:'🇪🇬', n:'Египет'}, {f:'🇲🇦', n:'Марокко'}, {f:'🇩🇿', n:'Алжир'}, {f:'🇹🇳', n:'Тунис'},
+  {f:'🇳🇬', n:'Нигерия'}, {f:'🇨🇲', n:'Камерун'}, {f:'🇬🇭', n:'Гана'}, {f:'🇸🇳', n:'Сенегал'},
   {f:'🇨🇮', n:'Кот-д\'Ивуар'}, {f:'🇿🇦', n:'ЮАР'}, {f:'🇰🇪', n:'Кения'}, {f:'🇪🇹', n:'Эфиопия'},
-  {f:'🇱🇾', n:'Ливия'}, {f:'🇩', n:'Судан'}, {f:'🇸🇴', n:'Сомали'}, {f:'🇺🇬', n:'Уганда'},
+  {f:'🇱🇾', n:'Ливия'}, {f:'🇸🇩', n:'Судан'}, {f:'🇸🇴', n:'Сомали'}, {f:'🇺🇬', n:'Уганда'},
   {f:'🇹🇿', n:'Танзания'}, {f:'🇲🇿', n:'Мозамбик'}, {f:'🇦🇴', n:'Ангола'}, {f:'🇿🇲', n:'Замбия'},
-  {f:'🇿🇼', n:'Зимбабве'}, {f:'🇧🇼', n:'Ботсвана'}, {f:'🇳🇦', n:'Намибия'},
+  {f:'🇿🇼', n:'Зимбабве'}, {f:'🇧🇼', n:'Ботсвана'}, {f:'🇳🇦', n:'Намибия'}, {f:'🇬🇳', n:'Гвинея'},
+  {f:'🇧🇫', n:'Буркина-Фасо'}, {f:'🇧🇮', n:'Бурунди'}, {f:'🇨🇬', n:'Конго'}, {f:'🇨🇩', n:'ДР Конго'},
+  {f:'🇲🇱', n:'Мали'}, {f:'🇳🇪', n:'Нигер'}, {f:'🇹🇩', n:'Чад'}, {f:'🇷🇼', n:'Руанда'},
+  {f:'🇲🇬', n:'Мадагаскар'}, {f:'🇬🇲', n:'Гамбия'}, {f:'🇬🇼', n:'Гвинея-Бисау'}, {f:'🇨🇻', n:'Кабо-Верде'},
+  {f:'🇸🇹', n:'Сан-Томе и Принсипи'}, {f:'🇱🇸', n:'Лесото'}, {f:'🇸🇿', n:'Эсватини'}, {f:'🇲🇺', n:'Маврикий'},
   // Океания
-  {f:'🇦🇺', n:'Австралия'}, {f:'🇳🇿', n:'Новая Зеландия'}, {f:'🇫🇯', n:'Фиджи'}, {f:'🇬', n:'Папуа-Новая Гвинея'},
+  {f:'🇦🇺', n:'Австралия'}, {f:'🇳🇿', n:'Новая Зеландия'}, {f:'🇫🇯', n:'Фиджи'}, {f:'🇵🇬', n:'Папуа-Новая Гвинея'},
+  {f:'🇸🇧', n:'Соломоновы Острова'}, {f:'🇻🇺', n:'Вануату'}, {f:'🇼🇸', n:'Самоа'}, {f:'🇹🇴', n:'Тонга'},
+  {f:'🇰🇮', n:'Кирибати'}, {f:'🇲🇭', n:'Маршалловы Острова'}, {f:'🇵🇼', n:'Палау'}, {f:'🇹🇻', n:'Тувалу'},
   // Прочее
   {f:'🏴', n:'Чёрный флаг'}, {f:'🏳️', n:'Белый флаг'}, {f:'🏁', n:'Клетчатый'}, {f:'🚩', n:'Красный вымпел'}
 ];
@@ -627,17 +687,17 @@ function selectFlag(flag) {
 const TOURNAMENT_PRESETS = [
   { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏴󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇪', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇪🇺', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇷🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '', name: 'Кубок страны', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇸', name: 'Кубок Испании', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌟', name: 'Клубный ЧМ', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 }
@@ -712,27 +772,27 @@ function initDefaults() {
   tournamentOrder = ['laliga', 'europa', 'cup', 'wc'];
   globalTeams = [
     { id: 'real_betiz', name: 'Real Betiz', isMe: true, flag: '🇪🇸' },
-    { id: 'bacelona', name: 'Bacelona', isMe: false, flag: '🇸' },
-    { id: 'r_madrid', name: 'R-Madrid', isMe: false, flag: '🇪' },
+    { id: 'bacelona', name: 'Bacelona', isMe: false, flag: '🇪🇸' },
+    { id: 'r_madrid', name: 'R-Madrid', isMe: false, flag: '🇪🇸' },
     { id: 'atlet_madrid', name: 'Atlet Madrid', isMe: false, flag: '🇪🇸' },
     { id: 'vilarreal', name: 'Vilarreal', isMe: false, flag: '🇪🇸' },
-    { id: 'sevila', name: 'Sevila', isMe: false, flag: '🇸' },
-    { id: 'rb_leipzi', name: 'RB Leipzi', isMe: false, flag: '🇩' },
+    { id: 'sevila', name: 'Sevila', isMe: false, flag: '🇪🇸' },
+    { id: 'rb_leipzi', name: 'RB Leipzi', isMe: false, flag: '🇩🇪' },
     { id: 'veronaa', name: 'Veronaa', isMe: false, flag: '🇮🇹' },
     { id: 'fk_soch', name: 'FK Soch', isMe: false, flag: '🇷🇺' },
-    { id: 'westhan', name: 'WestHan', isMe: false, flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-    { id: 'roma', name: 'Roma', isMe: false, flag: '🇹' },
-    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: '🏴󠁢󠁥󠁧󠁿' },
-    { id: 'monacco', name: 'Monacco', isMe: false, flag: '🇷' },
-    { id: 'allmeria', name: 'Allmeria', isMe: false, flag: '🇪' },
+    { id: 'westhan', name: 'WestHan', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}' },
+    { id: 'roma', name: 'Roma', isMe: false, flag: '🇮🇹' },
+    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}' },
+    { id: 'monacco', name: 'Monacco', isMe: false, flag: '🇲🇨' },
+    { id: 'allmeria', name: 'Allmeria', isMe: false, flag: '🇪🇸' },
     { id: 'vallencia', name: 'Vallencia', isMe: false, flag: '🇪🇸' },
     { id: 'ibiz_evissa', name: 'Ibiz Evissa', isMe: false, flag: '🇪🇸' },
     { id: 'athlet_billbao', name: 'Athlet Billbao', isMe: false, flag: '🇪🇸' },
-    { id: 'real_socied', name: 'Real Socied', isMe: false, flag: '🇸' },
+    { id: 'real_socied', name: 'Real Socied', isMe: false, flag: '🇪🇸' },
     { id: 'rus', name: 'RUS', isMe: true, flag: '🇷🇺' },
-    { id: 'cro', name: 'CRO', isMe: false, flag: '🇷' },
+    { id: 'cro', name: 'CRO', isMe: false, flag: '🇭🇷' },
     { id: 'pol', name: 'POL', isMe: false, flag: '🇵🇱' },
-    { id: 'sco', name: 'SCO', isMe: false, flag: '🏴󠁧󠁢󠁳󠁣󠁴' },
+    { id: 'sco', name: 'SCO', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}' },
     { id: 'cze', name: 'CZE', isMe: false, flag: '🇨🇿' },
     { id: 'rom', name: 'ROM', isMe: false, flag: '🇷🇴' }
   ];
@@ -957,6 +1017,7 @@ function saveToLocalStorage() {
       currentSeasonIdx
     };
     localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+    saveToCookies();
   } catch (e) { console.warn('Save failed', e); }
 }
 
@@ -984,7 +1045,14 @@ function loadFromLocalStorage() {
       }
     }
     
-    const raw = localStorage.getItem('tournamentApp_v4');
+    let raw = localStorage.getItem('tournamentApp_v4');
+    if (!raw) {
+      const cookieData = loadFromCookies();
+      if (cookieData && cookieData.seasons && cookieData.seasons.length > 0) {
+        raw = JSON.stringify(cookieData);
+        localStorage.setItem('tournamentApp_v4', raw);
+      }
+    }
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (!data.seasons || data.seasons.length === 0) return false;
@@ -2113,6 +2181,8 @@ function showToast(msg) {
 function resetAll() {
   if (!confirm('Сбросить все данные и сезоны?')) return;
   localStorage.removeItem('tournamentApp_v4');
+  const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
+  for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
   seasons = [];
   currentSeasonIdx = 0;
   initDefaults();
