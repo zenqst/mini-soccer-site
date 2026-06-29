@@ -401,7 +401,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.1.2</span>
+    <span>Генератор турнирных таблиц v2.2.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -808,6 +808,14 @@ function initDefaults() {
 function getTeamById(teamId) {
   if (!teamId) return null;
   return globalTeams.find(t => t.id === teamId);
+}
+
+function getSortedTeams() {
+  return [...globalTeams].sort((a, b) => {
+    if (a.isMe && !b.isMe) return -1;
+    if (!a.isMe && b.isMe) return 1;
+    return a.name.localeCompare(b.name, 'ru');
+  });
 }
 
 function getMyTeamInTournament(key) {
@@ -1362,7 +1370,7 @@ function renderTeams(key) {
       <div style="display:flex; gap:8px; align-items:center;">
         <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
           <option value="">Выбери команду</option>
-          ${globalTeams.map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+          ${getSortedTeams().map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
         </select>
         ${badge}
         <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
@@ -1454,7 +1462,12 @@ function renderGlobalTeams() {
   const focusState = saveFocusState();
   
   container.innerHTML = '';
-  globalTeams.forEach((team, idx) => {
+  const sorted = globalTeams.map((team, idx) => ({ team, idx })).sort((a, b) => {
+    if (a.team.isMe && !b.team.isMe) return -1;
+    if (!a.team.isMe && b.team.isMe) return 1;
+    return a.team.name.localeCompare(b.team.name, 'ru');
+  });
+  sorted.forEach(({ team, idx }) => {
     const item = document.createElement('div');
     item.className = 'team-list-item' + (team.isMe ? ' my-team' : '');
     item.innerHTML = `
@@ -1515,7 +1528,7 @@ function updateTeamSelects(key) {
       const currentVal = select.value;
       select.innerHTML = `
         <option value="">Выбери команду</option>
-        ${globalTeams.map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+        ${getSortedTeams().map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
       `;
     }
   });
@@ -1597,7 +1610,7 @@ function renderPlayoffMatches(key) {
           <span class="field-label">Соперник</span>
           <select data-idx="${idx}" data-field="opponentTeamId" data-focus-id="po-${key}-${idx}-opp">
             <option value="">— выбери —</option>
-            ${globalTeams.filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
+            ${getSortedTeams().filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
           </select>
         </div>
         <div class="field-group">
