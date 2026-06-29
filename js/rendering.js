@@ -289,14 +289,22 @@ function renderGlobalTeams() {
   const focusState = saveFocusState();
   
   container.innerHTML = '';
-  const sorted = globalTeams.map((team, idx) => ({ team, idx })).sort((a, b) => {
+  const visible = [];
+  const hidden = [];
+  globalTeams.forEach((team, idx) => {
+    if (team.visible === false) hidden.push({ team, idx });
+    else visible.push({ team, idx });
+  });
+  visible.sort((a, b) => {
     if (a.team.isMe && !b.team.isMe) return -1;
     if (!a.team.isMe && b.team.isMe) return 1;
     return a.team.name.localeCompare(b.team.name, 'ru');
   });
-  sorted.forEach(({ team, idx }) => {
+  hidden.sort((a, b) => a.team.name.localeCompare(b.team.name, 'ru'));
+
+  function renderTeamItem({ team, idx }) {
     const item = document.createElement('div');
-    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '');
+    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '') + (team.visible === false ? ' team-hidden' : '');
     item.innerHTML = `
       <button class="flag-preview" onclick="openFlagForGlobalTeam(${idx})" title="Выбрать флаг">${team.flag || '🏳️'}</button>
       <input type="text" value="${escapeHtml(team.name)}" placeholder="Название команды" style="flex:1; min-width:150px;" data-field="name" data-idx="${idx}" data-focus-id="gteam-${idx}-name">
@@ -328,8 +336,22 @@ function renderGlobalTeams() {
       });
     });
     
-    container.appendChild(item);
-  });
+    return item;
+  }
+
+  visible.forEach(v => container.appendChild(renderTeamItem(v)));
+
+  if (hidden.length > 0) {
+    const hint = document.createElement('div');
+    hint.className = 'group-collapsed-hint';
+    hint.style.cursor = 'pointer';
+    hint.innerHTML = `▶ Скрытые команды (${hidden.length}). Нажми, чтобы развернуть`;
+    hint.onclick = () => {
+      hint.remove();
+      hidden.forEach(h => container.appendChild(renderTeamItem(h)));
+    };
+    container.appendChild(hint);
+  }
   
   restoreFocus(focusState, container);
 }

@@ -174,6 +174,7 @@
   
   .tournament-list-item, .team-list-item, .season-list-item { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg); margin-bottom: 6px; flex-wrap: wrap; }
   .team-list-item.my-team { background: var(--highlight); }
+  .team-list-item.team-hidden { opacity: 0.6; }
   .season-list-item.current { background: var(--highlight); border: 1px solid #fde68a; }
   .team-list-item .name, .tournament-list-item .name, .season-list-item .name { flex: 1; font-size: 14px; font-weight: 500; min-width: 150px; }
   .team-list-item .meta, .tournament-list-item .meta, .season-list-item .meta { font-size: 11px; color: var(--text-muted); }
