@@ -1,0 +1,2477 @@
+// ============ УТИЛИТЫ ============
+function parseNum(val, def = 0) {
+  if (val === '' || val === null || val === undefined) return def;
+  const str = String(val).replace(',', '.').trim();
+  const n = parseFloat(str);
+  return isNaN(n) ? def : n;
+}
+
+function parseIntSafe(val, def = 0) {
+  if (val === '' || val === null || val === undefined) return def;
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ''), 10);
+  return isNaN(n) ? def : n;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// ============ КУКИ ============
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '=([^;]*)');
+  return v ? decodeURIComponent(v[2]) : null;
+}
+
+function deleteCookie(name) {
+  document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+}
+
+function saveToCookies() {
+  try {
+    syncCurrentSeason();
+    const data = {
+      version: 4,
+      seasons: JSON.parse(JSON.stringify(seasons)),
+      currentSeasonIdx
+    };
+    const json = JSON.stringify(data);
+    const chunkSize = 2000;
+    const chunks = Math.ceil(json.length / chunkSize);
+    setCookie('tournamentApp_c0', chunks.toString(), 365);
+    for (let i = 0; i < chunks; i++) {
+      setCookie('tournamentApp_c' + (i + 1), json.substring(i * chunkSize, (i + 1) * chunkSize), 365);
+    }
+  } catch (e) { console.warn('Cookie save failed', e); }
+}
+
+function loadFromCookies() {
+  try {
+    const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
+    if (chunkCount <= 0) return null;
+    let json = '';
+    for (let i = 1; i <= chunkCount; i++) {
+      const chunk = getCookie('tournamentApp_c' + i);
+      if (chunk === null) return null;
+      json += chunk;
+    }
+    return JSON.parse(json);
+  } catch (e) { console.warn('Cookie load failed', e); return null; }
+}
+
+// ============ ФЛАГИ СТРАН ============
+const _tag = (s) => String.fromCodePoint(...[...s].map(c => 0xE0000 + c.charCodeAt(0)));
+const FLAG_ENGLAND = '🏴' + _tag('gbeng') + String.fromCodePoint(0xE007F);
+const FLAG_SCOTLAND = '🏴' + _tag('gbsct') + String.fromCodePoint(0xE007F);
+const FLAG_WALES = '🏴' + _tag('gbwls') + String.fromCodePoint(0xE007F);
+const FLAGS = [
+  // Европа
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_ENGLAND, n:'Англия'}, {f:FLAG_SCOTLAND, n:'Шотландия'},
+  {f:FLAG_WALES, n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇮🇹', n:'Италия'}, {f:'🇵🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇧🇪', n:'Бельгия'},
+  {f:'🇦🇹', n:'Австрия'}, {f:'🇨🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
+  {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
+  {f:'🇷🇴', n:'Румыния'}, {f:'🇬🇷', n:'Греция'}, {f:'🇹🇷', n:'Турция'}, {f:'🇸🇪', n:'Швеция'},
+  {f:'🇩🇰', n:'Дания'}, {f:'🇳🇴', n:'Норвегия'}, {f:'🇫🇮', n:'Финляндия'}, {f:'🇭🇺', n:'Венгрия'},
+  {f:'🇧🇬', n:'Болгария'}, {f:'🇸🇰', n:'Словакия'}, {f:'🇸🇮', n:'Словения'}, {f:'🇦🇱', n:'Албания'},
+  {f:'🇲🇰', n:'С. Македония'}, {f:'🇲🇩', n:'Молдова'}, {f:'🇧🇾', n:'Беларусь'}, {f:'🇱🇹', n:'Литва'},
+  {f:'🇱🇻', n:'Латвия'}, {f:'🇪🇪', n:'Эстония'}, {f:'🇮🇸', n:'Исландия'}, {f:'🇱🇺', n:'Люксембург'},
+  {f:'🇲🇹', n:'Мальта'}, {f:'🇨🇾', n:'Кипр'}, {f:'🇦🇩', n:'Андорра'}, {f:'🇲🇨', n:'Монако'},
+  {f:'🇱🇮', n:'Лихтенштейн'}, {f:'🇸🇲', n:'Сан-Марино'}, {f:'🇻🇦', n:'Ватикан'},
+  {f:'🇧🇦', n:'Босния и Герцеговина'}, {f:'🇲🇪', n:'Черногория'}, {f:'🇽🇰', n:'Косово'},
+  // Америка
+  {f:'🇧🇷', n:'Бразилия'}, {f:'🇦🇷', n:'Аргентина'}, {f:'🇺🇾', n:'Уругвай'}, {f:'🇨🇱', n:'Чили'},
+  {f:'🇨🇴', n:'Колумбия'}, {f:'🇵🇪', n:'Перу'}, {f:'🇪🇨', n:'Эквадор'}, {f:'🇵🇾', n:'Парагвай'},
+  {f:'🇻🇪', n:'Венесуэла'}, {f:'🇧🇴', n:'Боливия'}, {f:'🇲🇽', n:'Мексика'}, {f:'🇺🇸', n:'США'},
+  {f:'🇨🇦', n:'Канада'}, {f:'🇨🇷', n:'Коста-Рика'}, {f:'🇵🇦', n:'Панама'}, {f:'🇯🇲', n:'Ямайка'},
+  {f:'🇭🇳', n:'Гондурас'}, {f:'🇬🇹', n:'Гватемала'}, {f:'🇨🇺', n:'Куба'}, {f:'🇩🇴', n:'Доминикана'},
+  {f:'🇭🇹', n:'Гаити'}, {f:'🇹🇹', n:'Тринидад и Тобаго'}, {f:'🇨🇼', n:'Кюрасао'}, {f:'🇸🇷', n:'Суринам'},
+  // Азия
+  {f:'🇯🇵', n:'Япония'}, {f:'🇰🇷', n:'Южная Корея'}, {f:'🇨🇳', n:'Китай'}, {f:'🇮🇳', n:'Индия'},
+  {f:'🇸🇦', n:'Саудовская Аравия'}, {f:'🇦🇪', n:'ОАЭ'}, {f:'🇶🇦', n:'Катар'}, {f:'🇮🇷', n:'Иран'},
+  {f:'🇮🇶', n:'Ирак'}, {f:'🇸🇾', n:'Сирия'}, {f:'🇱🇧', n:'Ливан'}, {f:'🇮🇱', n:'Израиль'},
+  {f:'🇹🇭', n:'Таиланд'}, {f:'🇻🇳', n:'Вьетнам'}, {f:'🇮🇩', n:'Индонезия'}, {f:'🇲🇾', n:'Малайзия'},
+  {f:'🇵🇭', n:'Филиппины'}, {f:'🇰🇿', n:'Казахстан'}, {f:'🇺🇿', n:'Узбекистан'}, {f:'🇦🇫', n:'Афганистан'},
+  {f:'🇵🇰', n:'Пакистан'}, {f:'🇧🇩', n:'Бангладеш'}, {f:'🇱🇰', n:'Шри-Ланка'}, {f:'🇲🇲', n:'Мьянма'},
+  {f:'🇰🇬', n:'Кыргызстан'}, {f:'🇹🇯', n:'Таджикистан'}, {f:'🇹🇲', n:'Туркменистан'}, {f:'🇲🇳', n:'Монголия'},
+  {f:'🇹🇼', n:'Тайвань'}, {f:'🇭🇰', n:'Гонконг'}, {f:'🇧🇳', n:'Бруней'}, {f:'🇰🇭', n:'Камбоджа'},
+  {f:'🇳🇵', n:'Непал'}, {f:'🇱🇦', n:'Лаос'}, {f:'🇹🇱', n:'Восточный Тимор'},
+  // Африка
+  {f:'🇪🇬', n:'Египет'}, {f:'🇲🇦', n:'Марокко'}, {f:'🇩🇿', n:'Алжир'}, {f:'🇹🇳', n:'Тунис'},
+  {f:'🇳🇬', n:'Нигерия'}, {f:'🇨🇲', n:'Камерун'}, {f:'🇬🇭', n:'Гана'}, {f:'🇸🇳', n:'Сенегал'},
+  {f:'🇨🇮', n:'Кот-д\'Ивуар'}, {f:'🇿🇦', n:'ЮАР'}, {f:'🇰🇪', n:'Кения'}, {f:'🇪🇹', n:'Эфиопия'},
+  {f:'🇱🇾', n:'Ливия'}, {f:'🇸🇩', n:'Судан'}, {f:'🇸🇴', n:'Сомали'}, {f:'🇺🇬', n:'Уганда'},
+  {f:'🇹🇿', n:'Танзания'}, {f:'🇲🇿', n:'Мозамбик'}, {f:'🇦🇴', n:'Ангола'}, {f:'🇿🇲', n:'Замбия'},
+  {f:'🇿🇼', n:'Зимбабве'}, {f:'🇧🇼', n:'Ботсвана'}, {f:'🇳🇦', n:'Намибия'}, {f:'🇬🇳', n:'Гвинея'},
+  {f:'🇧🇫', n:'Буркина-Фасо'}, {f:'🇧🇮', n:'Бурунди'}, {f:'🇨🇬', n:'Конго'}, {f:'🇨🇩', n:'ДР Конго'},
+  {f:'🇲🇱', n:'Мали'}, {f:'🇳🇪', n:'Нигер'}, {f:'🇹🇩', n:'Чад'}, {f:'🇷🇼', n:'Руанда'},
+  {f:'🇲🇬', n:'Мадагаскар'}, {f:'🇬🇲', n:'Гамбия'}, {f:'🇬🇼', n:'Гвинея-Бисау'}, {f:'🇨🇻', n:'Кабо-Верде'},
+  {f:'🇸🇹', n:'Сан-Томе и Принсипи'}, {f:'🇱🇸', n:'Лесото'}, {f:'🇸🇿', n:'Эсватини'}, {f:'🇲🇺', n:'Маврикий'},
+  // Океания
+  {f:'🇦🇺', n:'Австралия'}, {f:'🇳🇿', n:'Новая Зеландия'}, {f:'🇫🇯', n:'Фиджи'}, {f:'🇵🇬', n:'Папуа-Новая Гвинея'},
+  {f:'🇸🇧', n:'Соломоновы Острова'}, {f:'🇻🇺', n:'Вануату'}, {f:'🇼🇸', n:'Самоа'}, {f:'🇹🇴', n:'Тонга'},
+  {f:'🇰🇮', n:'Кирибати'}, {f:'🇲🇭', n:'Маршалловы Острова'}, {f:'🇵🇼', n:'Палау'}, {f:'🇹🇻', n:'Тувалу'},
+  // Прочее
+  {f:'🏴', n:'Чёрный флаг'}, {f:'🏳️', n:'Белый флаг'}, {f:'🏁', n:'Клетчатый'}, {f:'🚩', n:'Красный вымпел'}
+];
+
+let flagModalCallback = null;
+let currentFlagFilter = '';
+
+function openFlagModal(currentFlag, callback) {
+  flagModalCallback = callback;
+  currentFlagFilter = '';
+  document.getElementById('flag-search').value = '';
+  renderFlagsGrid('');
+  document.getElementById('flag-modal').classList.add('show');
+  setTimeout(() => document.getElementById('flag-search').focus(), 100);
+}
+
+function closeFlagModal() {
+  document.getElementById('flag-modal').classList.remove('show');
+  flagModalCallback = null;
+}
+
+function filterFlags(val) {
+  currentFlagFilter = val.toLowerCase();
+  renderFlagsGrid(currentFlagFilter);
+}
+
+function renderFlagsGrid(filter) {
+  const grid = document.getElementById('flags-grid');
+  const filtered = filter 
+    ? FLAGS.filter(f => f.n.toLowerCase().includes(filter) || f.f.includes(filter))
+    : FLAGS;
+  grid.innerHTML = filtered.map(f => 
+    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag('${f.f}')">${f.f}</button>`
+  ).join('');
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">Ничего не найдено</div>';
+  }
+}
+
+function pickFlag(flag) {
+  if (flagModalCallback) flagModalCallback(flag);
+  closeFlagModal();
+}
+
+function selectFlag(flag) {
+  if (flagModalCallback) flagModalCallback(flag);
+  closeFlagModal();
+}
+
+// ============ ПРЕСЕТЫ ТУРНИРОВ ============
+const TOURNAMENT_PRESETS = [
+  { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏴󠁧󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇷🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇵🇹', name: 'Примейра', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇳🇱', name: 'Эредивизие', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇧🇷', name: 'Серия А (Бразилия)', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Чемпионат Мира (клубы)', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Кубок (страна)', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇺', name: 'Квалификация ЧЕ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 }
+];
+
+function openPresetsModal() {
+  const grid = document.getElementById('presets-grid');
+  grid.innerHTML = TOURNAMENT_PRESETS.map((p, idx) => `
+    <div class="preset-card" onclick="applyPreset(${idx})">
+      <div class="preset-name">${p.emoji} ${escapeHtml(p.name)}</div>
+      <div class="preset-meta">${p.rounds} матчей · ${p.hasPlayoff ? 'плей-офф' : 'лига'}${p.international ? ' · 🌍' : ''}</div>
+    </div>
+  `).join('');
+  document.getElementById('presets-modal').classList.add('show');
+}
+
+function closePresetsModal() {
+  document.getElementById('presets-modal').classList.remove('show');
+}
+
+function applyPreset(idx) {
+  const p = TOURNAMENT_PRESETS[idx];
+  const key = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  tournaments[key] = emptyTournament(p.emoji, p.name, p.rounds, p.hasPlayoff, p.format);
+  tournaments[key].customFormat = {...p.customFormat};
+  tournaments[key].pointsPerWin = p.ptsWin;
+  tournaments[key].pointsPerDraw = p.ptsDraw;
+  tournaments[key].isInternational = p.international;
+  tournamentOrder.push(key);
+  closePresetsModal();
+  renderTabs();
+  renderPanels();
+  renderTopStats(key);
+  renderTeams(key);
+  switchTab(key);
+  debouncedSave();
+  showToast(`Добавлен турнир «${p.name}»`);
+}
+
+// ============ STATE ============
+let tournamentOrder = [];
+let globalTeams = [];
+const tournaments = {};
+
+let seasons = [];
+let currentSeasonIdx = 0;
+let saveTimer = null;
+
+const COLORS = {
+  blue: '#3b82f6', green: '#10b981', amber: '#f59e0b',
+  red: '#ef4444', purple: '#8b5cf6', pink: '#ec4899',
+  teal: '#14b8a6', orange: '#f97316', slate: '#64748b',
+  myTeam: '#f59e0b'
+};
+
+const TOURNAMENT_COLORS = ['#ef4444', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+
+function emptyTournament(emoji, name, rounds, hasPlayoff = false, playoffFormat = 'single') {
+  return {
+    emoji, name, rounds, displayLimit: 0,
+    pointsPerWin: 3, pointsPerDraw: 1, showH2H: true,
+    hasPlayoff, playoffFormat, isInternational: false,
+    customFormat: { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 },
+    teams: [], topScorer: null, topAssist: null,
+    reachedPlayoff: false, playoffMatches: [],
+    groupCollapsed: undefined, playoffCollapsed: undefined,
+    summary: { goals: 0, assists: 0, mvp: 0, accuracy: 0, rating: 0 }
+  };
+}
+
+function initDefaults() {
+  tournamentOrder = [];
+  globalTeams = [];
+}
+
+function getTeamById(teamId) {
+  if (!teamId) return null;
+  return globalTeams.find(t => t.id === teamId);
+}
+
+function getSortedTeams(tournamentKey) {
+  const t = tournamentKey ? tournaments[tournamentKey] : null;
+  const isInternational = t ? t.isInternational : false;
+  const tournamentEmoji = t ? t.emoji : '';
+
+  const teamsInAnyTournament = new Set();
+  tournamentOrder.forEach(k => {
+    (tournaments[k].teams || []).forEach(te => teamsInAnyTournament.add(te.teamId));
+  });
+
+  const countryCountInTournament = {};
+  if (t) {
+    t.teams.forEach(te => {
+      const gt = getTeamById(te.teamId);
+      if (gt && gt.flag) countryCountInTournament[gt.flag] = (countryCountInTournament[gt.flag] || 0) + 1;
+    });
+  }
+
+  const countryTotalCount = {};
+  tournamentOrder.forEach(k => {
+    (tournaments[k].teams || []).forEach(te => {
+      const gt = getTeamById(te.teamId);
+      if (gt && gt.flag) countryTotalCount[gt.flag] = (countryTotalCount[gt.flag] || 0) + 1;
+    });
+  });
+
+  return [...globalTeams].filter(t => t.visible !== false).sort((a, b) => {
+    if (a.isMe && !b.isMe) return -1;
+    if (!a.isMe && b.isMe) return 1;
+
+    if (!isInternational && tournamentEmoji) {
+      const aMatch = a.flag === tournamentEmoji;
+      const bMatch = b.flag === tournamentEmoji;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+    }
+
+    const aNew = !teamsInAnyTournament.has(a.id);
+    const bNew = !teamsInAnyTournament.has(b.id);
+    if (aNew && !bNew) return -1;
+    if (!aNew && bNew) return 1;
+
+    if (isInternational) {
+      const aInThis = countryCountInTournament[a.flag] || 0;
+      const bInThis = countryCountInTournament[b.flag] || 0;
+      const aTotal = countryTotalCount[a.flag] || 0;
+      const bTotal = countryTotalCount[b.flag] || 0;
+
+      if (aInThis === 0 && bInThis > 0) return -1;
+      if (aInThis > 0 && bInThis === 0) return 1;
+
+      if (aTotal !== bTotal) return bTotal - aTotal;
+
+      return a.name.localeCompare(b.name, 'ru');
+    }
+
+    return a.name.localeCompare(b.name, 'ru');
+  });
+}
+
+function getMyTeamInTournament(key) {
+  const t = tournaments[key];
+  if (!t) return null;
+  for (const entry of t.teams) {
+    const gt = getTeamById(entry.teamId);
+    if (gt && gt.isMe) return { entry, globalTeam: gt };
+  }
+  return null;
+}
+
+function calcPoints(key, w, d) {
+  const t = tournaments[key];
+  if (!t) return 0;
+  return w * (t.pointsPerWin || 3) + d * (t.pointsPerDraw || 1);
+}
+
+function calcAutoRating(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return 0;
+  const s = t.summary || {};
+  const total = my.entry.w + my.entry.d + my.entry.l;
+  if (total === 0) return 0;
+  let rating = 5.0;
+  rating += (s.goals || 0) * 0.15;
+  rating += (s.assists || 0) * 0.1;
+  rating += (s.mvp || 0) * 0.3;
+  rating += (my.entry.w / total) * 2.0;
+  const achievement = getAchievement(key);
+  if (achievement === 'Чемпионство') rating += 0.5;
+  return Math.round(Math.min(10, Math.max(1, rating)) * 10) / 10;
+}
+
+function getNextRound(key) {
+  const t = tournaments[key];
+  if (t.playoffMatches.length === 0) return '1/8';
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  const expectedMatches = t.customFormat[lastMatch.round] || 1;
+  const matchesInRound = t.playoffMatches.filter(m => m.round === lastMatch.round);
+  if (matchesInRound.length >= expectedMatches) {
+    const roundOrder = ['1/8', '1/4', '1/2', 'Final'];
+    const idx = roundOrder.indexOf(lastMatch.round);
+    if (idx === -1 || idx === roundOrder.length - 1) return 'Final';
+    return roundOrder[idx + 1];
+  }
+  return lastMatch.round;
+}
+
+function isTournamentFinished(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return false;
+  const groupMatches = my.entry.w + my.entry.d + my.entry.l;
+  if (!t.hasPlayoff) return groupMatches >= t.rounds;
+  if (!t.reachedPlayoff) return groupMatches >= t.rounds;
+  if (t.playoffMatches.length === 0) return false;
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  if (lastMatch.result !== 'win' && lastMatch.result !== 'loss') return false;
+  return lastMatch.round === 'Final' || lastMatch.result === 'loss';
+}
+
+function getAchievement(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return '';
+  const meIdx = t.teams.indexOf(my.entry);
+  if (!t.hasPlayoff) {
+    const rank = meIdx + 1;
+    return rank === 1 ? 'Чемпионство' : `${rank} место`;
+  }
+  if (!t.reachedPlayoff) {
+    const rank = meIdx + 1;
+    return `${rank} место в группе`;
+  }
+  if (t.playoffMatches.length === 0) return '';
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  if (lastMatch.round === 'Final' && lastMatch.result === 'win') return 'Чемпионство';
+  if (lastMatch.round === 'Final' && lastMatch.result === 'loss') return '2 место';
+  if (lastMatch.round === 'Final' && lastMatch.result === 'draw') return 'Финал (ничья)';
+  if (lastMatch.result === 'loss') {
+    const roundRanges = { '1/2': '3-4', '1/4': '5-8', '1/8': '9-16' };
+    const range = roundRanges[lastMatch.round];
+    if (range) return `${range} место`;
+  }
+  return '';
+}
+
+function getTotalMatches(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return 0;
+  const groupMatches = my.entry.w + my.entry.d + my.entry.l;
+  const playoffMatches = t.playoffMatches.filter(m => m.result === 'win' || m.result === 'loss' || m.result === 'draw').length;
+  return groupMatches + playoffMatches;
+}
+
+function getTotalPossibleMatches(key) {
+  const t = tournaments[key];
+  if (!t.hasPlayoff) return t.rounds;
+  let playoffTotal = 0;
+  Object.values(t.customFormat).forEach(v => playoffTotal += v);
+  return t.rounds + playoffTotal;
+}
+
+// ============ FOCUS PRESERVATION ============
+function saveFocusState() {
+  const active = document.activeElement;
+  if (!active || active === document.body) return null;
+  const tagName = active.tagName;
+  if (tagName !== 'INPUT' && tagName !== 'TEXTAREA' && tagName !== 'SELECT') return null;
+  return {
+    focusId: active.dataset.focusId,
+    selStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
+  };
+}
+
+function restoreFocus(state, container) {
+  if (!state || !state.focusId || !container) return;
+  const el = container.querySelector(`[data-focus-id="${state.focusId}"]`);
+  if (!el) return;
+  el.focus();
+  if (state.selStart !== null && typeof el.setSelectionRange === 'function' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    try { 
+      if (el.type === 'text' && el.inputMode === 'numeric') {
+        el.setSelectionRange(el.value.length, el.value.length);
+      } else {
+        el.setSelectionRange(state.selStart, state.selEnd);
+      }
+    } catch(e) {}
+  }
+}
+
+// ============ LOCAL STORAGE ============
+function buildCurrentSeasonData() {
+  return {
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  };
+}
+
+function syncCurrentSeason() {
+  if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) return;
+  const data = buildCurrentSeasonData();
+  seasons[currentSeasonIdx].tournamentOrder = data.tournamentOrder;
+  seasons[currentSeasonIdx].tournaments = data.tournaments;
+  seasons[currentSeasonIdx].globalTeams = data.globalTeams;
+}
+
+function saveToLocalStorage() {
+  try {
+    syncCurrentSeason();
+    const data = {
+      version: 4,
+      seasons: JSON.parse(JSON.stringify(seasons)),
+      currentSeasonIdx
+    };
+    localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+    saveToCookies();
+  } catch (e) { console.warn('Save failed', e); }
+}
+
+function debouncedSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToLocalStorage, 800);
+}
+
+function migrateFlags(data) {
+  if (!data || !data.seasons) return data;
+  const teamFlagByName = {
+    'Real Betiz': '🇪🇸', 'Bacelona': '🇪🇸', 'R-Madrid': '🇪🇸',
+    'Atlet Madrid': '🇪🇸', 'Vilarreal': '🇪🇸', 'Sevila': '🇪🇸',
+    'RB Leipzi': '🇩🇪', 'Veronaa': '🇮🇹', 'FK Soch': '🇷🇺',
+    'WestHan': FLAG_ENGLAND, 'Roma': '🇮🇹', 'Arsnal': FLAG_ENGLAND,
+    'Monacco': '🇲🇨', 'Allmeria': '🇪🇸', 'Vallencia': '🇪🇸',
+    'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸',
+    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': FLAG_SCOTLAND,
+    'CZE': '🇨🇿', 'ROM': '🇷🇴'
+  };
+  const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
+  data.seasons.forEach(s => {
+    (s.globalTeams || []).forEach(t => {
+      if (!t.flag || t.flag === '') return;
+      if (teamFlagByName[t.name]) {
+        t.flag = teamFlagByName[t.name];
+      } else if (isFlagBroken(t.flag)) {
+        t.flag = '🏳️';
+      }
+    });
+    Object.values(s.tournaments || {}).forEach(t => {
+      if (t.emoji && isFlagBroken(t.emoji)) {
+        const nameLower = (t.name || '').toLowerCase();
+        if (nameLower.includes('serie') || nameLower.includes('серия')) t.emoji = '🇮🇹';
+        else if (nameLower.includes('рпл') || nameLower.includes('rpl')) t.emoji = '🇷🇺';
+        else if (nameLower.includes('лига чемпионов')) t.emoji = '🏆';
+        else if (nameLower.includes('лига европы')) t.emoji = '🏆';
+        else if (nameLower.includes('европ')) t.emoji = '🇪🇺';
+        else if (nameLower.includes('кубок')) t.emoji = '🏆';
+        else t.emoji = '🏆';
+      }
+    });
+  });
+  return data;
+}
+
+function loadFromLocalStorage() {
+  try {
+    for (const vKey of ['tournamentApp_v3', 'tournamentApp_v2']) {
+      const raw = localStorage.getItem(vKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.version = 4;
+        if (data.seasons) {
+          data.seasons.forEach(s => {
+            (s.globalTeams || []).forEach(t => { if (!t.flag) t.flag = ''; });
+            Object.values(s.tournaments || {}).forEach(t => { if (t.isInternational === undefined) t.isInternational = false; });
+          });
+        }
+        localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+        localStorage.removeItem(vKey);
+        break;
+      }
+    }
+    
+    let raw = localStorage.getItem('tournamentApp_v4');
+    if (!raw) {
+      const cookieData = loadFromCookies();
+      if (cookieData && cookieData.seasons && cookieData.seasons.length > 0) {
+        raw = JSON.stringify(cookieData);
+        localStorage.setItem('tournamentApp_v4', raw);
+      }
+    }
+    if (!raw) return false;
+    let data = JSON.parse(raw);
+    data = migrateFlags(data);
+    try { localStorage.setItem('tournamentApp_v4', JSON.stringify(data)); } catch(e) {}
+    if (!data.seasons || data.seasons.length === 0) return false;
+    seasons = data.seasons;
+    currentSeasonIdx = data.currentSeasonIdx ?? 0;
+    if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
+    const s = seasons[currentSeasonIdx];
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = JSON.parse(JSON.stringify(v));
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+    return true;
+  } catch (e) {
+    console.warn('Load failed', e);
+    return false;
+  }
+}
+
+// ============ SEASONS ============
+function updateSeasonSelector() {
+  const selector = document.getElementById('season-selector');
+  if (!selector) return;
+  selector.innerHTML = seasons.map((s, idx) => 
+    `<option value="${idx}" ${idx === currentSeasonIdx ? 'selected' : ''}>Сезон ${s.year}</option>`
+  ).join('');
+}
+
+function onSeasonChange(val) {
+  const idx = parseInt(val);
+  if (isNaN(idx) || idx === currentSeasonIdx) return;
+  switchSeason(idx);
+}
+
+function switchSeason(idx) {
+  if (idx < 0 || idx >= seasons.length) return;
+  syncCurrentSeason();
+  currentSeasonIdx = idx;
+  const s = seasons[idx];
+  Object.keys(tournaments).forEach(k => delete tournaments[k]);
+  tournamentOrder = [...(s.tournamentOrder || [])];
+  for (const [k, v] of Object.entries(s.tournaments || {})) {
+    tournaments[k] = JSON.parse(JSON.stringify(v));
+  }
+  globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  fullRender();
+  saveToLocalStorage();
+  showToast(`Переключено на сезон ${s.year}`);
+}
+
+function openNewSeasonModal() {
+  const defaultYear = seasons.length > 0 ? (seasons[seasons.length - 1].year + 1) : 2025;
+  document.getElementById('new-season-year').value = defaultYear;
+  document.getElementById('new-season-modal').classList.add('show');
+  setTimeout(() => document.getElementById('new-season-year').focus(), 100);
+}
+
+function closeNewSeasonModal() {
+  document.getElementById('new-season-modal').classList.remove('show');
+}
+
+function createNewSeason() {
+  const yearStr = document.getElementById('new-season-year').value.trim();
+  if (!yearStr) { showToast('Введи год'); return; }
+  const year = parseInt(yearStr);
+  if (isNaN(year) || year < 1900 || year > 2100) { showToast('Год должен быть от 1900 до 2100'); return; }
+  
+  syncCurrentSeason();
+  const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false }));
+  const newSeason = { 
+    year, 
+    tournamentOrder: [], 
+    tournaments: {}, 
+    globalTeams: copiedTeams
+  };
+  seasons.push(newSeason);
+  currentSeasonIdx = seasons.length - 1;
+  Object.keys(tournaments).forEach(k => delete tournaments[k]);
+  tournamentOrder = [];
+  globalTeams = JSON.parse(JSON.stringify(newSeason.globalTeams));
+  
+  closeNewSeasonModal();
+  fullRender();
+  saveToLocalStorage();
+  switchTab('settings');
+  showToast(`✅ Создан сезон ${year}`);
+}
+
+function duplicateCurrentSeason() {
+  syncCurrentSeason();
+  const s = seasons[currentSeasonIdx];
+  const newYear = prompt(`Год для копии сезона ${s.year}:`, s.year + 1);
+  if (!newYear) return;
+  const y = parseInt(newYear);
+  if (isNaN(y)) { showToast('Неверный год'); return; }
+  const copy = {
+    year: y,
+    tournamentOrder: JSON.parse(JSON.stringify(s.tournamentOrder)),
+    tournaments: JSON.parse(JSON.stringify(s.tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(s.globalTeams))
+  };
+  Object.values(copy.tournaments).forEach(t => {
+    t.teams.forEach(tm => { tm.w = 0; tm.d = 0; tm.l = 0; tm.h2h = [0,0,0]; });
+    t.playoffMatches = [];
+    t.reachedPlayoff = false;
+    t.groupCollapsed = undefined;
+    t.playoffCollapsed = undefined;
+    t.topScorer = null;
+    t.topAssist = null;
+    t.summary = { goals: 0, assists: 0, mvp: 0, accuracy: 0, rating: 0 };
+  });
+  seasons.push(copy);
+  switchSeason(seasons.length - 1);
+  showToast(`Дубликат сезона ${y} создан`);
+}
+
+function deleteSeason(idx) {
+  if (seasons.length <= 1) { showToast('Нельзя удалить единственный сезон'); return; }
+  if (!confirm(`Удалить сезон ${seasons[idx].year}?`)) return;
+  seasons.splice(idx, 1);
+  if (currentSeasonIdx >= seasons.length) currentSeasonIdx = seasons.length - 1;
+  else if (currentSeasonIdx > idx) currentSeasonIdx--;
+  else if (currentSeasonIdx === idx) {
+    const s = seasons[currentSeasonIdx];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = JSON.parse(JSON.stringify(v));
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  }
+  fullRender();
+  saveToLocalStorage();
+  showToast('Сезон удалён');
+}
+
+function renameSeason(idx) {
+  const newYear = prompt('Новый год сезона:', seasons[idx].year);
+  if (!newYear) return;
+  const y = parseInt(newYear);
+  if (isNaN(y)) { showToast('Неверный год'); return; }
+  seasons[idx].year = y;
+  updateSeasonSelector();
+  renderSeasonsList();
+  saveToLocalStorage();
+}
+
+function renderSeasonsList() {
+  const container = document.getElementById('seasons-list');
+  if (!container) return;
+  container.innerHTML = '';
+  seasons.forEach((s, idx) => {
+    const isCurrent = idx === currentSeasonIdx;
+    const tCount = (s.tournamentOrder || []).length;
+    const teamCount = (s.globalTeams || []).length;
+    const item = document.createElement('div');
+    item.className = 'season-list-item' + (isCurrent ? ' current' : '');
+    item.innerHTML = `
+      <span style="font-size:18px;">📅</span>
+      <div style="flex:1; min-width:150px;">
+        <div class="name">${escapeHtml(String(s.year))} ${isCurrent ? '<span class="my-team-badge">текущий</span>' : ''}</div>
+        <div class="meta">${tCount} турниров · ${teamCount} команд</div>
+      </div>
+      ${!isCurrent ? `<button class="btn btn-sm" onclick="switchSeason(${idx})">Открыть</button>` : ''}
+      <button class="btn btn-sm" onclick="renameSeason(${idx})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSeason(${idx})">✕</button>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// ============ RENDERING ============
+function renderTabs() {
+  const container = document.getElementById('main-tabs');
+  container.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const btn = document.createElement('button');
+    btn.className = 'tab';
+    btn.dataset.tab = key;
+    btn.textContent = `${t.emoji} ${t.name}`;
+    btn.onclick = () => switchTab(key);
+    container.appendChild(btn);
+  });
+  const statsBtn = document.createElement('button');
+  statsBtn.className = 'tab';
+  statsBtn.dataset.tab = 'stats';
+  statsBtn.textContent = '📊 Статистика';
+  statsBtn.onclick = () => switchTab('stats');
+  container.appendChild(statsBtn);
+  const careerBtn = document.createElement('button');
+  careerBtn.className = 'tab';
+  careerBtn.dataset.tab = 'career';
+  careerBtn.textContent = '⭐ Карьера';
+  careerBtn.onclick = () => switchTab('career');
+  container.appendChild(careerBtn);
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = 'tab';
+  settingsBtn.dataset.tab = 'settings';
+  settingsBtn.textContent = '⚙️ Настройки';
+  settingsBtn.onclick = () => switchTab('settings');
+  container.appendChild(settingsBtn);
+}
+
+function switchTab(key) {
+  document.querySelectorAll('#main-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`#main-tabs .tab[data-tab="${key}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('panel-' + key);
+  if (panel) panel.classList.add('active');
+  const isHiddenTab = key === 'career' || key === 'stats';
+  document.getElementById('main-actions').style.display = isHiddenTab ? 'none' : '';
+  document.getElementById('main-output').style.display = isHiddenTab ? 'none' : '';
+  if (key === 'stats') setTimeout(renderAllCharts, 50);
+  if (key === 'settings') renderSettingsPanel();
+  if (key === 'career') renderCareer();
+}
+
+function renderPanels() {
+  const container = document.getElementById('panels-container');
+  container.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + key;
+    panel.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-wrap">
+            <div class="card-title">${escapeHtml(t.emoji)} ${escapeHtml(t.name)}</div>
+            <button class="icon-btn" onclick="openTournamentModal('${key}')" title="Настройки турнира">⚙️</button>
+            ${t.hasPlayoff ? `<button class="icon-btn collapse-btn" onclick="toggleGroupCollapse('${key}')" title="Свернуть/развернуть группу" id="collapse-btn-${key}"></button>` : ''}
+          </div>
+          <button class="btn btn-sm" onclick="addTeamToTournament('${key}')">+ Команда</button>
+        </div>
+        <div class="top-stats" id="topstats-${key}"></div>
+        <div id="teams-${key}"></div>
+      </div>
+      <div id="playoff-${key}"></div>
+      <div id="summary-${key}"></div>
+    `;
+    container.appendChild(panel);
+  });
+}
+
+function autoRate(key) {
+  const t = tournaments[key];
+  t.summary.rating = calcAutoRating(key);
+  renderSummary(key);
+  renderTopStats(key);
+  debouncedSave();
+  showToast(`Рейтинг: ${t.summary.rating}`);
+}
+
+function toggleGroupCollapse(key) {
+  const t = tournaments[key];
+  t.groupCollapsed = !t.groupCollapsed;
+  renderTeams(key);
+  debouncedSave();
+}
+
+function togglePlayoffCollapse(key) {
+  const t = tournaments[key];
+  t.playoffCollapsed = !t.playoffCollapsed;
+  renderPlayoff(key);
+  debouncedSave();
+}
+
+function updateCollapseButton(key) {
+  const btn = document.getElementById('collapse-btn-' + key);
+  if (!btn) return;
+  const t = tournaments[key];
+  btn.textContent = t.groupCollapsed ? '▶ Группа' : '▼ Группа';
+}
+
+function renderTopStats(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('topstats-' + key);
+  if (!container) return;
+  container.innerHTML = `
+    <div class="top-stats-title">⭐ Мои показатели</div>
+    <div class="field-group" style="flex:1; min-width:0;">
+      <span class="field-label">Место в топе бомбардиров</span>
+      <input type="text" inputmode="numeric" value="${t.topScorer ?? ''}" placeholder="—" data-field="topScorer" data-focus-id="top-${key}-scorer">
+    </div>
+    <div class="field-group" style="flex:1; min-width:0;">
+      <span class="field-label">Место в топе ассистентов</span>
+      <input type="text" inputmode="numeric" value="${t.topAssist ?? ''}" placeholder="—" data-field="topAssist" data-focus-id="top-${key}-assist">
+    </div>
+  `;
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field = e.target.dataset.field;
+      const val = e.target.value === '' ? null : parseIntSafe(e.target.value);
+      if (field === 'topScorer') t.topScorer = val;
+      else if (field === 'topAssist') t.topAssist = val;
+      debouncedSave();
+    });
+  });
+}
+
+function renderTeams(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('teams-' + key);
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  updateCollapseButton(key);
+  
+  const my = getMyTeamInTournament(key);
+  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
+  if (t.hasPlayoff && groupMatches >= t.rounds && t.playoffMatches.length > 0 && t.groupCollapsed === undefined) {
+    t.groupCollapsed = true;
+  }
+  
+  const groupCollapsed = t.groupCollapsed || false;
+  
+  if (groupCollapsed && t.hasPlayoff) {
+    container.innerHTML = `
+      <div class="group-collapsed-hint">
+        Групповая стадия свёрнута (${t.teams.length} команд). 
+        <button class="btn btn-sm" onclick="toggleGroupCollapse('${key}')" style="margin-left:8px;">Развернуть</button>
+      </div>
+    `;
+    renderPlayoff(key);
+    renderSummary(key);
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  t.teams.forEach((teamEntry, idx) => {
+    const globalTeam = getTeamById(teamEntry.teamId);
+    const isMe = globalTeam ? globalTeam.isMe : false;
+    
+    const row = document.createElement('div');
+    row.className = 'team-row auto' + (isMe ? ' my-team' : '');
+    row.dataset.idx = idx;
+    
+    const badge = isMe ? '<span class="my-team-badge">ваша</span>' : '';
+    const pts = calcPoints(key, teamEntry.w, teamEntry.d);
+    
+    row.innerHTML = `
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
+          <option value="">Выбери команду</option>
+          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+        </select>
+        ${badge}
+        <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
+      </div>
+      <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Победы</span><input type="text" inputmode="numeric" value="${teamEntry.w}" data-field="w" data-focus-id="team-${key}-${idx}-w"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Ничьи</span><input type="text" inputmode="numeric" value="${teamEntry.d}" data-field="d" data-focus-id="team-${key}-${idx}-d"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Поражения</span><input type="text" inputmode="numeric" value="${teamEntry.l}" data-field="l" data-focus-id="team-${key}-${idx}-l"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Очки</span><div class="points-display">${pts}</div></div>
+      </div>
+      <div class="fields">
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: П</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[0]}" data-field="h2h-w" data-focus-id="team-${key}-${idx}-h2hw"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: Н</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[1]}" data-field="h2h-d" data-focus-id="team-${key}-${idx}-h2hd"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: ПР</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[2]}" data-field="h2h-l" data-focus-id="team-${key}-${idx}-h2hl"></div>
+      </div>
+      ${isMe ? '<div class="my-team-note">💡 Для вашей команды H2H не указывается</div>' : ''}
+    `;
+    
+    row.querySelectorAll('input, select').forEach(input => {
+      const isSelect = input.tagName === 'SELECT';
+      input.addEventListener(isSelect ? 'change' : 'input', (e) => {
+        const field = e.target.dataset.field;
+        const entry = tournaments[key].teams[idx];
+        if (field === 'teamId') {
+          entry.teamId = e.target.value;
+          renderTeams(key);
+          debouncedSave();
+          return;
+        } else if (field === 'w') entry.w = parseIntSafe(e.target.value);
+        else if (field === 'd') entry.d = parseIntSafe(e.target.value);
+        else if (field === 'l') entry.l = parseIntSafe(e.target.value);
+        else if (field === 'h2h-w') entry.h2h[0] = parseIntSafe(e.target.value);
+        else if (field === 'h2h-d') entry.h2h[1] = parseIntSafe(e.target.value);
+        else if (field === 'h2h-l') entry.h2h[2] = parseIntSafe(e.target.value);
+        
+        const ptsEl = row.querySelector('.points-display');
+        if (ptsEl) ptsEl.textContent = calcPoints(key, entry.w, entry.d);
+        
+        renderPlayoff(key);
+        renderSummary(key);
+        debouncedSave();
+      });
+    });
+    
+    container.appendChild(row);
+  });
+  
+  restoreFocus(focusState, container);
+  
+  renderPlayoff(key);
+  renderSummary(key);
+}
+
+function addTeamToTournament(key) {
+  tournaments[key].teams.push({ teamId: '', w: 0, d: 0, l: 0, h2h: [0, 0, 0] });
+  renderTeams(key);
+  debouncedSave();
+}
+
+function removeTeam(key, idx) {
+  tournaments[key].teams.splice(idx, 1);
+  renderTeams(key);
+  debouncedSave();
+}
+
+function addGlobalTeam() {
+  globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '', visible: true });
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => { renderTeams(k); });
+  debouncedSave();
+}
+
+function removeGlobalTeam(idx) {
+  const removed = globalTeams.splice(idx, 1)[0];
+  if (removed) {
+    tournamentOrder.forEach(key => {
+      tournaments[key].teams = tournaments[key].teams.filter(t => t.teamId !== removed.id);
+    });
+  }
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => renderTeams(k));
+  debouncedSave();
+}
+
+function renderGlobalTeams() {
+  const container = document.getElementById('global-teams-list');
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  container.innerHTML = '';
+  const sorted = globalTeams.map((team, idx) => ({ team, idx })).sort((a, b) => {
+    if (a.team.isMe && !b.team.isMe) return -1;
+    if (!a.team.isMe && b.team.isMe) return 1;
+    return a.team.name.localeCompare(b.team.name, 'ru');
+  });
+  sorted.forEach(({ team, idx }) => {
+    const item = document.createElement('div');
+    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '');
+    item.innerHTML = `
+      <button class="flag-preview" onclick="openFlagForGlobalTeam(${idx})" title="Выбрать флаг">${team.flag || '🏳️'}</button>
+      <input type="text" value="${escapeHtml(team.name)}" placeholder="Название команды" style="flex:1; min-width:150px;" data-field="name" data-idx="${idx}" data-focus-id="gteam-${idx}-name">
+      <label class="checkbox-row">
+        <input type="checkbox" ${team.isMe ? 'checked' : ''} data-field="isMe" data-idx="${idx}" data-focus-id="gteam-${idx}-isme">
+        Ваша
+      </label>
+      <button class="icon-btn" onclick="toggleTeamVisible(${idx})" title="${team.visible !== false ? 'Скрыть из выпадающих списков' : 'Показать в выпадающих списках'}" style="font-size:16px;${team.visible === false ? 'opacity:0.3;' : ''}">👁️</button>
+      <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${idx})">✕</button>
+    `;
+    
+    item.querySelectorAll('input').forEach(input => {
+      const field = input.dataset.field;
+      const eventType = (field === 'isMe') ? 'change' : 'input';
+      input.addEventListener(eventType, (e) => {
+        const i = parseInt(e.target.dataset.idx);
+        if (field === 'name') {
+          globalTeams[i].name = e.target.value;
+          tournamentOrder.forEach(k => updateTeamSelects(k));
+          debouncedSave();
+        } else if (field === 'isMe') {
+          globalTeams[i].isMe = e.target.checked;
+          renderGlobalTeams();
+          tournamentOrder.forEach(k => renderTeams(k));
+          debouncedSave();
+        }
+      });
+    });
+    
+    container.appendChild(item);
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+function toggleTeamVisible(idx) {
+  globalTeams[idx].visible = globalTeams[idx].visible === false ? true : false;
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => renderTeams(k));
+  debouncedSave();
+}
+
+function openFlagForGlobalTeam(idx) {
+  const team = globalTeams[idx];
+  openFlagModal(team.flag || '', (flag) => {
+    team.flag = flag;
+    renderGlobalTeams();
+    tournamentOrder.forEach(k => {
+      updateTeamSelects(k);
+    });
+    debouncedSave();
+  });
+}
+
+function updateTeamSelects(key) {
+  const container = document.getElementById('teams-' + key);
+  if (!container) return;
+  const rows = container.querySelectorAll('.team-row');
+  rows.forEach((row, idx) => {
+    const entry = tournaments[key].teams[idx];
+    if (!entry) return;
+    const select = row.querySelector('select[data-field="teamId"]');
+    if (select) {
+      const currentVal = select.value;
+      select.innerHTML = `
+        <option value="">Выбери команду</option>
+        ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+      `;
+    }
+  });
+}
+
+function renderPlayoff(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('playoff-' + key);
+  if (!container) return;
+  
+  if (!t.hasPlayoff) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const my = getMyTeamInTournament(key);
+  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
+  const showPlayoff = groupMatches >= t.rounds;
+  
+  if (t.playoffMatches.length > 0 && !t.reachedPlayoff) {
+    t.reachedPlayoff = true;
+  }
+  
+  if (!showPlayoff) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const playoffCollapsed = t.playoffCollapsed || false;
+  
+  container.innerHTML = `
+    <div class="playoff-section">
+      <div class="playoff-header">
+        <div class="playoff-title">🏆 Плей-офф</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-sm collapse-btn" onclick="togglePlayoffCollapse('${key}')">${playoffCollapsed ? '▶ Развернуть' : '▼ Свернуть'}</button>
+          <label class="checkbox-row">
+            <input type="checkbox" id="reached-playoff-${key}" ${t.reachedPlayoff ? 'checked' : ''}>
+            Вышел в плей-офф
+          </label>
+        </div>
+      </div>
+      <div id="playoff-matches-${key}" ${playoffCollapsed ? 'style="display:none;"' : ''}></div>
+    </div>
+  `;
+  
+  document.getElementById('reached-playoff-' + key).addEventListener('change', (e) => {
+    t.reachedPlayoff = e.target.checked;
+    if (!t.reachedPlayoff) t.playoffMatches = [];
+    renderPlayoff(key);
+    renderSummary(key);
+    debouncedSave();
+  });
+  
+  if (t.reachedPlayoff && !playoffCollapsed) renderPlayoffMatches(key);
+}
+
+function renderPlayoffMatches(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('playoff-matches-' + key);
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  const rounds = ['1/8', '1/4', '1/2', 'Final'];
+  const resultLabels = { 'win': 'Победа', 'loss': 'Поражение', 'draw': 'Ничья', 'scheduled': 'Запланировано' };
+  
+  const matchesHtml = t.playoffMatches.map((match, idx) => {
+    const statusClass = match.result || 'scheduled';
+    return `
+      <div class="playoff-match ${statusClass}">
+        <div class="field-group">
+          <span class="field-label">Раунд</span>
+          <select data-idx="${idx}" data-field="round" data-focus-id="po-${key}-${idx}-round">
+            ${rounds.map(r => `<option value="${r}" ${match.round === r ? 'selected' : ''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Соперник</span>
+          <select data-idx="${idx}" data-field="opponentTeamId" data-focus-id="po-${key}-${idx}-opp">
+            <option value="">— выбери —</option>
+            ${getSortedTeams(key).filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Результат</span>
+          <select data-idx="${idx}" data-field="result" data-focus-id="po-${key}-${idx}-res">
+            ${Object.entries(resultLabels).map(([val, label]) => `<option value="${val}" ${match.result === val ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Дома</span>
+          <label class="checkbox-row" style="padding:6px 0;">
+            <input type="checkbox" data-idx="${idx}" data-field="isHome" ${match.isHome ? 'checked' : ''} data-focus-id="po-${key}-${idx}-home">
+          </label>
+        </div>
+        <div class="field-group" style="justify-content:flex-end;">
+          <button class="btn btn-danger btn-sm" onclick="removePlayoffMatch('${key}', ${idx})">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  container.innerHTML = matchesHtml + `
+    <button class="btn btn-sm" onclick="addPlayoffMatch('${key}')" style="margin-top:8px;">+ Матч</button>
+  `;
+  
+  container.querySelectorAll('select, input[type="checkbox"]').forEach(input => {
+    const handler = (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      const field = e.target.dataset.field;
+      if (isNaN(idx) || !field) return;
+      const match = t.playoffMatches[idx];
+      if (!match) return;
+      
+      if (field === 'isHome') match.isHome = e.target.checked;
+      else match[field] = e.target.value;
+      
+      if (field === 'opponentTeamId') {
+        t.playoffMatches.forEach((m, i) => {
+          if (i !== idx && m.round === match.round) m.opponentTeamId = match.opponentTeamId;
+        });
+      }
+      
+      renderPlayoffMatches(key);
+      renderSummary(key);
+      debouncedSave();
+    };
+    input.addEventListener('change', handler);
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+function addPlayoffMatch(key) {
+  const t = tournaments[key];
+  const round = getNextRound(key);
+  t.playoffMatches.push({ round: round, opponentTeamId: '', result: 'scheduled', isHome: false });
+  
+  const expectedMatches = t.customFormat[round] || 1;
+  const matchesInRound = t.playoffMatches.filter(m => m.round === round);
+  if (matchesInRound.length === 1 && expectedMatches === 2) {
+    t.playoffMatches.push({ round: round, opponentTeamId: '', result: 'scheduled', isHome: true });
+  }
+  
+  renderPlayoffMatches(key);
+  renderSummary(key);
+  debouncedSave();
+}
+
+function removePlayoffMatch(key, idx) {
+  const t = tournaments[key];
+  const match = t.playoffMatches[idx];
+  const pairMatches = t.playoffMatches.filter((m, i) => 
+    i !== idx && m.round === match.round && 
+    (m.opponentTeamId === match.opponentTeamId || !match.opponentTeamId)
+  );
+  if (pairMatches.length === 1 && (t.customFormat[match.round] || 1) === 2) {
+    const pairIdx = t.playoffMatches.indexOf(pairMatches[0]);
+    if (pairIdx > idx) {
+      t.playoffMatches.splice(pairIdx, 1);
+      t.playoffMatches.splice(idx, 1);
+    } else {
+      t.playoffMatches.splice(idx, 1);
+      t.playoffMatches.splice(pairIdx, 1);
+    }
+  } else {
+    t.playoffMatches.splice(idx, 1);
+  }
+  renderPlayoffMatches(key);
+  renderSummary(key);
+  debouncedSave();
+}
+
+function buildSummaryText(key) {
+  const t = tournaments[key];
+  const achievement = getAchievement(key);
+  const totalMatches = getTotalMatches(key);
+  const s = t.summary;
+  
+  const parts = [];
+  if (achievement) parts.push(achievement);
+  if (t.topScorer === 1) parts.push('Золотая бутса');
+  parts.push(`${totalMatches} матчей`);
+  parts.push(`${s.goals} голов`);
+  parts.push(`${s.assists} ассистов`);
+  parts.push(`${s.mvp} МВП`);
+  parts.push(`${s.accuracy}% точности`);
+  parts.push(`${s.rating} рейтинга`);
+  
+  return `Итог ${t.name}: ${parts.join(', ')}`;
+}
+
+function renderSummary(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('summary-' + key);
+  if (!container) return;
+  
+  const finished = isTournamentFinished(key);
+  
+  if (!finished) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const focusState = saveFocusState();
+  const summaryText = finished ? buildSummaryText(key) : '';
+  const s = t.summary;
+  
+  container.innerHTML = `
+    <div class="summary-section">
+      <div class="summary-title">${finished ? '📊 Итог турнира' : '📊 Мои показатели турнира'}</div>
+      ${finished ? `<div class="summary-text">${escapeHtml(summaryText)}</div>` : ''}
+      <div class="summary-fields">
+        <div class="field-group"><span class="field-label">Голы</span><input type="text" inputmode="numeric" value="${s.goals}" data-field="goals" data-focus-id="sum-${key}-goals"></div>
+        <div class="field-group"><span class="field-label">Ассисты</span><input type="text" inputmode="numeric" value="${s.assists}" data-field="assists" data-focus-id="sum-${key}-assists"></div>
+        <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" value="${s.mvp}" data-field="mvp" data-focus-id="sum-${key}-mvp"></div>
+        <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" value="${s.accuracy}" data-field="accuracy" data-focus-id="sum-${key}-accuracy"></div>
+        <div class="field-group"><span class="field-label">Рейтинг</span><div style="display:flex; gap:4px;"><input type="text" inputmode="decimal" value="${s.rating}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating" style="flex:1;"><button class="btn btn-sm" onclick="autoRate('${key}')" title="Рассчитать автоматически">🎲</button></div></div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field = e.target.dataset.field;
+      if (field === 'rating') {
+        t.summary[field] = parseNum(e.target.value);
+      } else {
+        t.summary[field] = parseIntSafe(e.target.value);
+      }
+      if (isTournamentFinished(key)) {
+        const textEl = container.querySelector('.summary-text');
+        if (textEl) textEl.textContent = buildSummaryText(key);
+      }
+      debouncedSave();
+    });
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+let currentModalKey = null;
+
+const TOURNAMENT_EMOJIS = [
+  { v: '🏆', l: '🏆 Кубок' }, { v: '🌍', l: '🌍 Мир/Квалификация' }, { v: '🌎', l: '🌎 Америка' },
+  { v: '🇪🇺', l: '🇪🇺 Европа' }, { v: '🇪🇸', l: '🇪🇸 Испания' }, { v: '🏴󠁧󠁢󠁥󠁧󠁿', l: '🏴 Англия' },
+  { v: '🇮🇹', l: '🇮🇹 Италия' }, { v: '🇩🇪', l: '🇩🇪 Германия' }, { v: '🇫🇷', l: '🇫🇷 Франция' },
+  { v: '🇷🇺', l: '🇷🇺 Россия' }, { v: '🇵🇹', l: '🇵🇹 Португалия' }, { v: '🇳🇱', l: '🇳🇱 Нидерланды' },
+  { v: '🇧🇷', l: '🇧🇷 Бразилия' }, { v: '🇦🇷', l: '🇦🇷 Аргентина' }, { v: '🇨🇱', l: '🇨🇱 Чили' },
+  { v: '🇨🇴', l: '🇨🇴 Колумбия' }, { v: '🇲🇽', l: '🇲🇽 Мексика' }, { v: '🇺🇸', l: '🇺🇸 США' },
+  { v: '🇯🇵', l: '🇯🇵 Япония' }, { v: '🇰🇷', l: '🇰🇷 Южная Корея' }, { v: '🇨🇳', l: '🇨🇳 Китай' },
+  { v: '🇹🇷', l: '🇹🇷 Турция' }, { v: '🇺🇦', l: '🇺🇦 Украина' }, { v: '🇵🇱', l: '🇵🇱 Польша' },
+  { v: '🇧🇪', l: '🇧🇪 Бельгия' }, { v: '🇨🇭', l: '🇨🇭 Швейцария' }, { v: '🇦🇹', l: '🇦🇹 Австрия' },
+  { v: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', l: '🏴 Шотландия' }, { v: '🏴󠁧󠁢󠁷󠁬󠁿', l: '🏴 Уэльс' }, { v: '🇮🇪', l: '🇮🇪 Ирландия' },
+  { v: '🇸🇪', l: '🇸🇪 Швеция' }, { v: '🇩🇰', l: '🇩🇰 Дания' }, { v: '🇳🇴', l: '🇳🇴 Норвегия' },
+  { v: '🇨🇿', l: '🇨🇿 Чехия' }, { v: '🇷🇸', l: '🇷🇸 Сербия' }, { v: '🇭🇷', l: '🇭🇷 Хорватия' },
+  { v: '🇷🇴', l: '🇷🇴 Румыния' }, { v: '🇬🇷', l: '🇬🇷 Греция' }, { v: '🇭🇺', l: '🇭🇺 Венгрия' }
+];
+
+function openTournamentModal(key) {
+  currentModalKey = key;
+  const t = tournaments[key];
+  const emojiSelect = document.getElementById('modal-emoji');
+  emojiSelect.innerHTML = TOURNAMENT_EMOJIS.map(e => `<option value="${e.v}" ${e.v === t.emoji ? 'selected' : ''}>${e.l}</option>`).join('') + `<option value="📝" ${!TOURNAMENT_EMOJIS.find(e => e.v === t.emoji) ? 'selected' : ''}>📝 Другое</option>`;
+  document.getElementById('modal-name').value = t.name;
+  document.getElementById('modal-rounds').value = t.rounds;
+  document.getElementById('modal-limit').value = t.displayLimit || '';
+  document.getElementById('modal-pts-win').value = t.pointsPerWin;
+  document.getElementById('modal-pts-draw').value = t.pointsPerDraw;
+  document.getElementById('modal-show-h2h').checked = t.showH2H;
+  document.getElementById('modal-international').checked = t.isInternational || false;
+  document.getElementById('modal-has-playoff').checked = t.hasPlayoff;
+  updatePlayoffFormatUI();
+  if (t.hasPlayoff) {
+    document.getElementById('modal-playoff-format').value = t.playoffFormat;
+    updateCustomFormatUI();
+    document.getElementById('custom-1/8').value = t.customFormat['1/8'];
+    document.getElementById('custom-1/4').value = t.customFormat['1/4'];
+    document.getElementById('custom-1/2').value = t.customFormat['1/2'];
+  }
+  document.getElementById('tournament-modal').classList.add('show');
+}
+
+function updatePlayoffFormatUI() {
+  const hasPlayoff = document.getElementById('modal-has-playoff').checked;
+  document.getElementById('playoff-format-section').style.display = hasPlayoff ? 'block' : 'none';
+}
+
+function updateCustomFormatUI() {
+  const format = document.getElementById('modal-playoff-format').value;
+  document.getElementById('custom-format-fields').style.display = format === 'custom' ? 'block' : 'none';
+}
+
+document.getElementById('modal-has-playoff').addEventListener('change', updatePlayoffFormatUI);
+document.getElementById('modal-playoff-format').addEventListener('change', updateCustomFormatUI);
+
+function closeModal() {
+  document.getElementById('tournament-modal').classList.remove('show');
+  currentModalKey = null;
+}
+
+function saveTournamentSettings() {
+  if (!currentModalKey) return;
+  const t = tournaments[currentModalKey];
+  t.emoji = document.getElementById('modal-emoji').value || '🏆';
+  t.name = document.getElementById('modal-name').value || 'Турнир';
+  t.rounds = Math.max(0, parseIntSafe(document.getElementById('modal-rounds').value));
+  t.displayLimit = Math.max(0, parseIntSafe(document.getElementById('modal-limit').value));
+  t.pointsPerWin = Math.max(0, parseIntSafe(document.getElementById('modal-pts-win').value));
+  t.pointsPerDraw = Math.max(0, parseIntSafe(document.getElementById('modal-pts-draw').value));
+  t.showH2H = document.getElementById('modal-show-h2h').checked;
+  t.isInternational = document.getElementById('modal-international').checked;
+  t.hasPlayoff = document.getElementById('modal-has-playoff').checked;
+  if (t.hasPlayoff) {
+    t.playoffFormat = document.getElementById('modal-playoff-format').value;
+    if (t.playoffFormat === 'custom') {
+      t.customFormat['1/8'] = parseIntSafe(document.getElementById('custom-1/8').value) || 1;
+      t.customFormat['1/4'] = parseIntSafe(document.getElementById('custom-1/4').value) || 1;
+      t.customFormat['1/2'] = parseIntSafe(document.getElementById('custom-1/2').value) || 1;
+    } else if (t.playoffFormat === 'single') {
+      t.customFormat = { '1/8': 1, '1/4': 1, '1/2': 1, 'Final': 1 };
+    } else if (t.playoffFormat === 'double') {
+      t.customFormat = { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 };
+    }
+  }
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  switchTab(currentModalKey);
+  closeModal();
+  debouncedSave();
+  showToast('Настройки сохранены');
+}
+
+function deleteCurrentTournament() {
+  if (!currentModalKey) return;
+  if (!confirm(`Удалить турнир «${tournaments[currentModalKey].name}»?`)) return;
+  const key = currentModalKey;
+  delete tournaments[key];
+  tournamentOrder = tournamentOrder.filter(k => k !== key);
+  closeModal();
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  switchTab(tournamentOrder[0] || 'settings');
+  debouncedSave();
+  showToast('Турнир удалён');
+}
+
+function renderSettingsPanel() {
+  renderSeasonsList();
+  const list = document.getElementById('tournament-list');
+  list.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const item = document.createElement('div');
+    item.className = 'tournament-list-item';
+    item.innerHTML = `
+      <span style="font-size:18px; width:28px; text-align:center; flex-shrink:0; display:inline-block;">${escapeHtml(t.emoji)}</span>
+      <div style="flex:1; min-width:150px;">
+        <div class="name">${escapeHtml(t.name)} ${t.isInternational ? '<span style="font-size:10px; color:var(--text-muted);">🌍</span>' : ''}</div>
+        <div class="meta">${t.teams.length} команд · ${t.rounds} матчей · ${t.hasPlayoff ? 'плей-офф' : 'лига'}${t.displayLimit > 0 ? ` · топ-${t.displayLimit}` : ''}</div>
+      </div>
+      <button class="btn btn-sm" onclick="openTournamentModal('${key}')">⚙️</button>
+    `;
+    list.appendChild(item);
+  });
+  renderGlobalTeams();
+}
+
+let tournamentCounter = 0;
+function addTournament() {
+  tournamentCounter++;
+  const key = 'custom_' + Date.now() + '_' + tournamentCounter;
+  tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
+  tournamentOrder.push(key);
+  renderTabs();
+  renderPanels();
+  renderTopStats(key);
+  renderTeams(key);
+  switchTab(key);
+  openTournamentModal(key);
+  debouncedSave();
+}
+
+function buildExportData() {
+  syncCurrentSeason();
+  return {
+    version: 4,
+    seasons: JSON.parse(JSON.stringify(seasons)),
+    currentSeasonIdx
+  };
+}
+
+function openDataModal(tab = 'export') {
+  if (tab === 'export') {
+    const data = buildExportData();
+    document.getElementById('export-textarea').value = JSON.stringify(data, null, 2);
+  } else {
+    document.getElementById('import-textarea').value = '';
+  }
+  switchDataTab(tab);
+  document.getElementById('data-modal').classList.add('show');
+}
+
+function closeDataModal() {
+  document.getElementById('data-modal').classList.remove('show');
+}
+
+function openTeamManager() {
+  renderTeamManager();
+  document.getElementById('team-manager-modal').classList.add('show');
+}
+
+function closeTeamManager() {
+  document.getElementById('team-manager-modal').classList.remove('show');
+}
+
+function renderTeamManager() {
+  const body = document.getElementById('team-manager-body');
+  if (!body) return;
+
+  const sorted = [...globalTeams].map((t, i) => ({ t, i })).sort((a, b) => {
+    if (a.t.isMe && !b.t.isMe) return -1;
+    if (!a.t.isMe && b.t.isMe) return 1;
+    return a.t.name.localeCompare(b.t.name, 'ru');
+  });
+
+  body.innerHTML = sorted.map(({ t, i }) => {
+    const usedIn = [];
+    tournamentOrder.forEach(k => {
+      const tour = tournaments[k];
+      if (tour.teams.some(te => te.teamId === t.id)) {
+        usedIn.push(`${tour.emoji} ${tour.name}`);
+      }
+    });
+    const seasonYears = seasons.filter(s => (s.globalTeams || []).some(gt => gt.id === t.id)).map(s => s.year);
+    const metaParts = [];
+    if (usedIn.length > 0) metaParts.push(`Турниры: ${usedIn.join(', ')}`);
+    if (seasonYears.length > 0) metaParts.push(`Сезоны: ${formatSeasonRange(seasonYears)}`);
+
+    return `<div class="tm-row${t.isMe ? ' my-team' : ''}">
+      <button class="tm-flag" onclick="openFlagForGlobalTeam(${i}); renderTeamManager();" title="Выбрать флаг">${t.flag || '🏳️'}</button>
+      <input type="text" value="${escapeHtml(t.name)}" placeholder="Название" onchange="globalTeams[${i}].name=this.value; renderGlobalTeams(); renderTeamManager(); debouncedSave();">
+      <label class="checkbox-row"><input type="checkbox" ${t.isMe ? 'checked' : ''} onchange="globalTeams[${i}].isMe=this.checked; renderGlobalTeams(); renderTeamManager(); debouncedSave();"> Моя</label>
+      <button class="icon-btn" onclick="toggleTeamVisible(${i}); renderTeamManager();" title="${t.visible !== false ? 'Скрыть' : 'Показать'}" style="font-size:16px;${t.visible === false ? 'opacity:0.3;' : ''}">👁️</button>
+      <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${i}); renderTeamManager();">✕</button>
+      ${metaParts.length > 0 ? `<div class="tm-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function formatSeasonRange(years) {
+  if (!years || years.length === 0) return '';
+  const sorted = [...years].sort((a, b) => a - b);
+  if (sorted.length === 1) return String(sorted[0]);
+  return `${sorted[0]}–${sorted[sorted.length - 1]}`;
+}
+
+function switchDataTab(tab) {
+  document.querySelectorAll('.data-modal-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.data-modal-panel').forEach(p => p.classList.remove('active'));
+  const tabBtn = document.querySelector(`.data-modal-tab[data-panel="${tab}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  const panel = document.getElementById('data-panel-' + tab);
+  if (panel) panel.classList.add('active');
+  if (tab === 'export') {
+    const data = buildExportData();
+    document.getElementById('export-textarea').value = JSON.stringify(data, null, 2);
+  }
+}
+
+function copyExportData() {
+  const data = buildExportData();
+  const json = JSON.stringify(data, null, 2);
+  const textarea = document.getElementById('export-textarea');
+  textarea.value = json;
+  
+  const done = () => showToast('✅ JSON скопирован');
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(json).then(done).catch(() => {
+      textarea.select();
+      try { document.execCommand('copy'); done(); } 
+      catch (err) { showToast('❌ Не удалось скопировать'); }
+    });
+  } else {
+    textarea.select();
+    try { document.execCommand('copy'); done(); } 
+    catch (err) { showToast('❌ Не удалось скопировать'); }
+  }
+}
+
+function downloadExportFile() {
+  try {
+    const data = buildExportData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0,10);
+    a.download = `tournaments_${date}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    showToast('✅ Файл скачивается');
+  } catch (err) {
+    showToast('⚠️ Ошибка: ' + err.message);
+  }
+}
+
+function importFromText() {
+  const text = document.getElementById('import-textarea').value.trim();
+  if (!text) { showToast('⚠️ Вставь JSON'); return; }
+  doImport(text);
+}
+
+function importFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => doImport(e.target.result);
+  reader.onerror = () => showToast('❌ Не удалось прочитать');
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function normalizeTournament(v) {
+  return {
+    emoji: v.emoji || '🏆', name: v.name || 'Турнир',
+    rounds: v.rounds || 10, displayLimit: v.displayLimit || 0,
+    pointsPerWin: v.pointsPerWin ?? 3, pointsPerDraw: v.pointsPerDraw ?? 1,
+    showH2H: v.showH2H ?? true, hasPlayoff: v.hasPlayoff ?? false,
+    isInternational: v.isInternational ?? false,
+    playoffFormat: v.playoffFormat || 'single',
+    customFormat: v.customFormat || { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 },
+    teams: v.teams || [], topScorer: v.topScorer ?? null, topAssist: v.topAssist ?? null,
+    reachedPlayoff: v.reachedPlayoff ?? false, playoffMatches: v.playoffMatches || [],
+    groupCollapsed: v.groupCollapsed, playoffCollapsed: v.playoffCollapsed,
+    summary: {
+      goals: v.summary?.goals || 0, assists: v.summary?.assists || 0,
+      mvp: v.summary?.mvp || 0, accuracy: v.summary?.accuracy || 0,
+      rating: v.summary?.rating || 0
+    }
+  };
+}
+
+function doImport(text) {
+  try {
+    const data = JSON.parse(text);
+    
+    if (data.tournaments && data.tournamentOrder && !data.seasons) {
+      const year = new Date().getFullYear();
+      seasons = [{
+        year,
+        tournamentOrder: data.tournamentOrder,
+        tournaments: data.tournaments,
+        globalTeams: data.globalTeams || []
+      }];
+      currentSeasonIdx = 0;
+    } else if (data.seasons) {
+      seasons = data.seasons.map(s => ({
+        year: s.year,
+        tournamentOrder: s.tournamentOrder || [],
+        tournaments: s.tournaments || {},
+        globalTeams: s.globalTeams || []
+      }));
+      currentSeasonIdx = data.currentSeasonIdx ?? 0;
+      if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
+    } else {
+      throw new Error('Неверный формат');
+    }
+    
+    const s = seasons[currentSeasonIdx];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = normalizeTournament(v);
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+    globalTeams.forEach(t => { if (!t.flag) t.flag = ''; });
+    
+    fullRender();
+    saveToLocalStorage();
+    closeDataModal();
+    showToast('✅ Данные импортированы');
+  } catch (err) {
+    showToast('❌ Ошибка: ' + err.message);
+  }
+}
+
+function formatTeamLine(key, rank, teamEntry) {
+  const t = tournaments[key];
+  const globalTeam = getTeamById(teamEntry.teamId);
+  if (!globalTeam) return '';
+  const pts = calcPoints(key, teamEntry.w, teamEntry.d);
+  const name = globalTeam.name || '???';
+  const flag = t.isInternational && globalTeam.flag ? globalTeam.flag + ' ' : '';
+  const base = `${rank}. ${flag}${name}: ${teamEntry.w} / ${teamEntry.d} / ${teamEntry.l} (${pts})`;
+  if (globalTeam.isMe || !t.showH2H) return base;
+  return `${base} [${teamEntry.h2h[0]} / ${teamEntry.h2h[1]} / ${teamEntry.h2h[2]}]`;
+}
+
+function formatPlayoffMatch(match, myName, myFlag, t) {
+  const opponent = getTeamById(match.opponentTeamId);
+  const opponentName = opponent ? opponent.name : '???';
+  const opponentFlag = t.isInternational && opponent?.flag ? opponent.flag + ' ' : '';
+  const myFlagStr = t.isInternational && myFlag ? myFlag + ' ' : '';
+  const resultText = {
+    'win': 'Победа', 'loss': 'Поражение',
+    'draw': 'Ничья', 'scheduled': 'Запланировано'
+  }[match.result] || '???';
+  if (match.isHome) return `${match.round}. ${myFlagStr}${myName} — ${opponentFlag}${opponentName} (${resultText})`;
+  return `${match.round}. ${opponentFlag}${opponentName} — ${myFlagStr}${myName} (${resultText})`;
+}
+
+function generate() {
+  tournamentOrder.forEach(key => {
+    tournaments[key].teams.sort((a, b) => calcPoints(key, b.w, b.d) - calcPoints(key, a.w, a.d));
+  });
+  
+  const blocks = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    const my = getMyTeamInTournament(key);
+    const myName = my ? my.globalTeam.name : '';
+    const myFlag = my ? my.globalTeam.flag : '';
+    let block = `${t.emoji} ${t.name}\n`;
+    if (t.hasPlayoff && t.reachedPlayoff) block += 'Группа:\n';
+    let teamsToDisplay = t.teams;
+    if (t.displayLimit > 0) teamsToDisplay = t.teams.slice(0, t.displayLimit);
+    teamsToDisplay.forEach((teamEntry, i) => {
+      const line = formatTeamLine(key, i + 1, teamEntry);
+      if (line) block += line + '\n';
+    });
+    if (t.hasPlayoff && t.reachedPlayoff && t.playoffMatches.length > 0) {
+      block += '\nПлей-офф:\n';
+      t.playoffMatches.forEach(match => { block += formatPlayoffMatch(match, myName, myFlag, t) + '\n'; });
+    }
+    const ranks = [];
+    if (t.topScorer != null) ranks.push(`#${t.topScorer}`);
+    if (t.topAssist != null) ranks.push(`#${t.topAssist}`);
+    if (ranks.length > 0) block += `(${ranks.join(', ')})`;
+    if (isTournamentFinished(key)) {
+      block += `\n\n${buildSummaryText(key)}`;
+    }
+    blocks.push(block);
+  });
+  
+  const allFinished = tournamentOrder.length > 0 && tournamentOrder.every(key => isTournamentFinished(key));
+  
+  if (allFinished) {
+    let seasonTotal = { trophies: 0, goldenBoots: 0, matches: 0, goals: 0, assists: 0, mvp: 0, ratingSum: 0, ratingCount: 0 };
+    tournamentOrder.forEach(key => {
+      const t = tournaments[key];
+      const achievement = getAchievement(key);
+      if (achievement === 'Чемпионство') seasonTotal.trophies++;
+      if (t.topScorer === 1) seasonTotal.goldenBoots++;
+      seasonTotal.matches += getTotalMatches(key);
+      seasonTotal.goals += t.summary.goals;
+      seasonTotal.assists += t.summary.assists;
+      seasonTotal.mvp += t.summary.mvp;
+      if (t.summary.rating > 0) {
+        seasonTotal.ratingSum += t.summary.rating;
+        seasonTotal.ratingCount++;
+      }
+    });
+    
+    const seasonParts = [];
+    if (seasonTotal.trophies > 0) seasonParts.push('🏆'.repeat(seasonTotal.trophies));
+    if (seasonTotal.goldenBoots > 0) seasonParts.push('🏅'.repeat(seasonTotal.goldenBoots));
+    seasonParts.push(`${seasonTotal.matches} матчей`);
+    seasonParts.push(`${seasonTotal.goals} голов`);
+    seasonParts.push(`${seasonTotal.assists} ассистов`);
+    seasonParts.push(`${seasonTotal.mvp} МВП`);
+    if (seasonTotal.ratingCount > 0) {
+      const avgRating = (seasonTotal.ratingSum / seasonTotal.ratingCount).toFixed(1);
+      seasonParts.push(`${avgRating} рейтинга`);
+    }
+    const seasonYear = seasons[currentSeasonIdx]?.year || '';
+    blocks.push(`Итог сезона${seasonYear ? ' ' + seasonYear : ''}: ${seasonParts.join(', ')}`);
+  }
+  
+  const output = document.getElementById('output');
+  if (blocks.length === 0) {
+    output.innerHTML = '<div class="empty">Добавь команды в турниры</div>';
+  } else {
+    output.textContent = blocks.join('\n\n');
+  }
+}
+
+function copyOutput() {
+  const text = document.getElementById('output').textContent;
+  if (!text || text.includes('Нажми «Сгенерировать»')) {
+    showToast('Сначала сгенерируй');
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => showToast('Скопировано'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Скопировано');
+    });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function resetAll() {
+  if (!confirm('Сбросить все данные и сезоны?')) return;
+  localStorage.removeItem('tournamentApp_v4');
+  const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
+  for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
+  seasons = [];
+  currentSeasonIdx = 0;
+  initDefaults();
+  seasons = [{
+    year: 2025,
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  }];
+  currentSeasonIdx = 0;
+  fullRender();
+  saveToLocalStorage();
+  document.getElementById('output').innerHTML = '<div class="empty">Нажми «Сгенерировать»</div>';
+  switchTab('settings');
+}
+
+function showGuide() {
+  const guideHidden = getCookie('guide_hidden');
+  const banner = document.getElementById('guide-banner');
+  if (!guideHidden && banner) {
+    banner.style.display = tournamentOrder.length === 0 ? 'block' : 'none';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
+function closeGuide() {
+  setCookie('guide_hidden', '1', 365);
+  document.getElementById('guide-banner').style.display = 'none';
+}
+
+function fullRender() {
+  showGuide();
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  updateSeasonSelector();
+  const activeTab = document.querySelector('#main-tabs .tab.active');
+  if (activeTab) {
+    switchTab(activeTab.dataset.tab);
+  } else if (tournamentOrder.length > 0) {
+    switchTab(tournamentOrder[0]);
+  } else {
+    switchTab('settings');
+  }
+}
+
+// ============ CHARTS ============
+const chartInstances = {};
+let currentFormTournament = null;
+
+function getChartColors() {
+  const bg = getComputedStyle(document.body).backgroundColor;
+  const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  const luminance = match ? (0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]) / 255 : 0.95;
+  const dark = luminance < 0.4;
+  return {
+    text: dark ? '#e5e5e5' : '#1a1a1a',
+    textMuted: dark ? '#a0a0a0' : '#737373',
+    grid: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
+    tooltipBg: dark ? '#333' : '#1a1a1a',
+    emptyBar: dark ? '#444' : '#e5e5e5'
+  };
+}
+
+function chartOpts(overrides = {}) {
+  const c = getChartColors();
+  const base = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { font: { family: '-apple-system, BlinkMacSystemFont, sans-serif', size: 12 }, color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } },
+      tooltip: { backgroundColor: c.tooltipBg, titleColor: '#fff', bodyColor: '#fff', padding: 10, cornerRadius: 4, titleFont: { weight: '600' }, displayColors: false }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+      y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true }
+    }
+  };
+  return JSON.parse(JSON.stringify({ ...base, ...overrides }));
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function getTournamentColor(key) {
+  const idx = tournamentOrder.indexOf(key);
+  return TOURNAMENT_COLORS[idx % TOURNAMENT_COLORS.length];
+}
+
+function renderSummaryStats() {
+  const container = document.getElementById('stats-summary');
+  const totalTeams = tournamentOrder.reduce((s, k) => s + (tournaments[k]?.teams.length || 0), 0);
+  let myTotalPts = 0, myBestRank = null, myWorstRank = null, myTournamentsCount = 0;
+  let totalGoals = 0, totalAssists = 0, totalMvp = 0, totalMatches = 0, trophies = 0;
+  let ratingSum = 0, ratingCount = 0;
+  tournamentOrder.forEach(k => {
+    const t = tournaments[k];
+    const my = getMyTeamInTournament(k);
+    if (my) {
+      myTournamentsCount++;
+      myTotalPts += calcPoints(k, my.entry.w, my.entry.d);
+      const rank = t.teams.indexOf(my.entry) + 1;
+      if (myBestRank === null || rank < myBestRank) myBestRank = rank;
+      if (myWorstRank === null || rank > myWorstRank) myWorstRank = rank;
+    }
+    totalGoals += t.summary.goals;
+    totalAssists += t.summary.assists;
+    totalMvp += t.summary.mvp;
+    totalMatches += getTotalMatches(k);
+    if (getAchievement(k) === 'Чемпионство') trophies++;
+    if (t.summary.rating > 0) { ratingSum += t.summary.rating; ratingCount++; }
+  });
+  const avgRating = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
+  const seasonYear = seasons[currentSeasonIdx]?.year || '—';
+  container.innerHTML = `
+    <div class="stat-box"><div class="label">Сезон</div><div class="value">${seasonYear}</div><div class="sub">${seasons.length} всего</div></div>
+    <div class="stat-box highlight"><div class="label">🏆 Трофеи</div><div class="value">${trophies}</div><div class="sub">${myTournamentsCount} турниров</div></div>
+    <div class="stat-box"><div class="label">Матчей</div><div class="value">${totalMatches}</div><div class="sub">${totalTeams} команд</div></div>
+    <div class="stat-box"><div class="label">⚽ Голы</div><div class="value">${totalGoals}</div><div class="sub">${totalAssists} ассистов</div></div>
+    <div class="stat-box"><div class="label">Лучшая позиция</div><div class="value">${myBestRank ?? '—'}</div><div class="sub">худшая: ${myWorstRank ?? '—'}</div></div>
+    <div class="stat-box"><div class="label">⭐ Рейтинг</div><div class="value">${avgRating}</div><div class="sub">${totalMvp} МВП</div></div>
+  `;
+}
+
+function renderPointsChart() {
+  destroyChart('chart-points');
+  const ctx = document.getElementById('chart-points').getContext('2d');
+  const c = getChartColors();
+  const sorted = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    const color = getTournamentColor(key);
+    t.teams.forEach(teamEntry => {
+      const globalTeam = getTeamById(teamEntry.teamId);
+      if (!globalTeam) return;
+      sorted.push({ l: `${globalTeam.name} · ${t.name}`, v: calcPoints(key, teamEntry.w, teamEntry.d), c: globalTeam.isMe ? COLORS.myTeam : color });
+    });
+  });
+  sorted.sort((a, b) => b.v - a.v);
+  if (sorted.length === 0) {
+    chartInstances['chart-points'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-points'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 18 }] },
+    options: chartOpts({ indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } } } })
+  });
+}
+
+function renderFormSelector() {
+  const container = document.getElementById('form-selector');
+  container.innerHTML = '';
+  const available = tournamentOrder.filter(k => tournaments[k]?.teams.length > 0);
+  if (!currentFormTournament || !tournaments[currentFormTournament] || tournaments[currentFormTournament].teams.length === 0) {
+    currentFormTournament = available[0] || null;
+  }
+  available.forEach(key => {
+    const t = tournaments[key];
+    const btn = document.createElement('button');
+    btn.textContent = `${t.emoji} ${t.name}`;
+    btn.className = key === currentFormTournament ? 'active' : '';
+    btn.onclick = () => {
+      currentFormTournament = key;
+      document.querySelectorAll('#form-selector button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFormChart();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function renderFormChart() {
+  destroyChart('chart-form');
+  const ctx = document.getElementById('chart-form').getContext('2d');
+  const c = getChartColors();
+  const t = tournaments[currentFormTournament];
+  if (!t || t.teams.length === 0) return;
+  const labels = t.teams.map(tm => { const gt = getTeamById(tm.teamId); return gt ? gt.name : '???'; });
+  chartInstances['chart-form'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Победы', data: t.teams.map(tm => tm.w), backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Ничьи', data: t.teams.map(tm => tm.d), backgroundColor: COLORS.amber, borderRadius: 4, borderSkipped: false },
+      { label: 'Поражения', data: t.teams.map(tm => tm.l), backgroundColor: COLORS.red, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: chartOpts({ plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } }, y: { stacked: true, grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true } } })
+  });
+}
+
+function renderTopsChart() {
+  destroyChart('chart-tops');
+  const ctx = document.getElementById('chart-tops').getContext('2d');
+  const c = getChartColors();
+  const labels = [], scorerData = [], assistData = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || (t.topScorer == null && t.topAssist == null)) return;
+    labels.push(t.name);
+    scorerData.push(t.topScorer);
+    assistData.push(t.topAssist);
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-tops'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-tops'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Бомбардиры', data: scorerData, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false },
+      { label: 'Ассистенты', data: assistData, backgroundColor: COLORS.purple, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11, weight: '500' } }, border: { display: false } },
+        y: { 
+          reverse: true, 
+          grid: { color: c.grid, drawBorder: false }, 
+          ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1, callback: v => '#' + v }, 
+          border: { display: false }, 
+          beginAtZero: false,
+          title: { display: true, text: 'Место (меньше = лучше)', color: c.textMuted, font: { size: 11 } }
+        }
+      }
+    })
+  });
+}
+
+function renderGoalsAssistsChart() {
+  destroyChart('chart-goals-assists');
+  const ctx = document.getElementById('chart-goals-assists').getContext('2d');
+  const c = getChartColors();
+  const labels = [], goals = [], assists = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    labels.push(t.name);
+    goals.push(t.summary.goals);
+    assists.push(t.summary.assists);
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-goals-assists'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-goals-assists'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Голы', data: goals, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Ассисты', data: assists, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+      }
+    })
+  });
+}
+
+function renderDiffChart() {
+  destroyChart('chart-diff');
+  const ctx = document.getElementById('chart-diff').getContext('2d');
+  const c = getChartColors();
+  const sorted = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    t.teams.forEach(teamEntry => {
+      const globalTeam = getTeamById(teamEntry.teamId);
+      if (!globalTeam) return;
+      const diff = teamEntry.w - teamEntry.l;
+      sorted.push({ l: globalTeam.name, v: diff, c: globalTeam.isMe ? COLORS.myTeam : (diff > 0 ? COLORS.green : diff < 0 ? COLORS.red : COLORS.slate) });
+    });
+  });
+  sorted.sort((a, b) => b.v - a.v);
+  if (sorted.length === 0) {
+    chartInstances['chart-diff'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-diff'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 16 }] },
+    options: chartOpts({ plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: c.text, font: { size: 10 }, maxRotation: 60, minRotation: 45 }, border: { display: false } }, y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false } } } })
+  });
+}
+
+function renderProgressChart() {
+  destroyChart('chart-progress');
+  const ctx = document.getElementById('chart-progress').getContext('2d');
+  const c = getChartColors();
+  const labels = [], played = [], total = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    labels.push(t.name);
+    const groupPlayed = my.entry.w + my.entry.d + my.entry.l;
+    const playoffPlayed = t.playoffMatches.filter(m => m.result === 'win' || m.result === 'loss' || m.result === 'draw').length;
+    played.push(groupPlayed + playoffPlayed);
+    total.push(getTotalPossibleMatches(key));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-progress'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-progress'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Сыграно', data: played, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Всего', data: total, backgroundColor: c.emptyBar, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+      }
+    })
+  });
+}
+
+function renderEfficiencyChart() {
+  destroyChart('chart-efficiency');
+  const ctx = document.getElementById('chart-efficiency').getContext('2d');
+  const c = getChartColors();
+  const labels = [], efficiency = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    labels.push(t.name);
+    const total = my.entry.w + my.entry.d + my.entry.l;
+    const eff = total > 0 ? ((my.entry.w / total) * 100).toFixed(1) : 0;
+    efficiency.push(parseFloat(eff));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-efficiency'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-efficiency'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Эффективность %', data: efficiency, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }] },
+    options: chartOpts({ 
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: 'Процент побед', color: c.textMuted, font: { size: 11 } } }
+      }
+    })
+  });
+}
+
+function renderRatingChart() {
+  destroyChart('chart-rating');
+  const ctx = document.getElementById('chart-rating').getContext('2d');
+  const c = getChartColors();
+  const labels = [], ratings = [], colors = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.summary.rating <= 0) return;
+    labels.push(t.name);
+    ratings.push(t.summary.rating);
+    colors.push(getTournamentColor(key));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-rating'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-rating'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Рейтинг', data: ratings, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: chartOpts({ 
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 10, title: { display: true, text: 'Рейтинг', color: c.textMuted, font: { size: 11 } } }
+      }
+    })
+  });
+}
+
+function renderAchievementsChart() {
+  destroyChart('chart-achievements');
+  const ctx = document.getElementById('chart-achievements').getContext('2d');
+  const c = getChartColors();
+  const counts = { 'Чемпионство': 0, '2 место': 0, '3-4 место': 0, '5-8 место': 0, '9-16 место': 0, 'Другое': 0 };
+  tournamentOrder.forEach(key => {
+    const a = getAchievement(key);
+    if (!a) return;
+    if (a === 'Чемпионство') counts['Чемпионство']++;
+    else if (a === '2 место') counts['2 место']++;
+    else if (a.startsWith('3-4')) counts['3-4 место']++;
+    else if (a.startsWith('5-8')) counts['5-8 место']++;
+    else if (a.startsWith('9-16')) counts['9-16 место']++;
+    else if (a.includes('место')) counts['Другое']++;
+  });
+  const labels = Object.keys(counts).filter(k => counts[k] > 0);
+  const data = labels.map(k => counts[k]);
+  const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#64748b'];
+  if (labels.length === 0) {
+    chartInstances['chart-achievements'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: [c.emptyBar] }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-achievements'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }] },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'right', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }
+    })
+  });
+}
+
+function renderPieChart() {
+  destroyChart('chart-pie');
+  const ctx = document.getElementById('chart-pie').getContext('2d');
+  const c = getChartColors();
+  let totalWins = 0, totalDraws = 0, totalLosses = 0;
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    totalWins += my.entry.w;
+    totalDraws += my.entry.d;
+    totalLosses += my.entry.l;
+  });
+  if (totalWins === 0 && totalDraws === 0 && totalLosses === 0) {
+    chartInstances['chart-pie'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: [c.emptyBar] }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
+    return;
+  }
+  chartInstances['chart-pie'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: ['Победы', 'Ничьи', 'Поражения'], datasets: [{ data: [totalWins, totalDraws, totalLosses], backgroundColor: [COLORS.green, COLORS.amber, COLORS.red], borderWidth: 0 }] },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }
+    })
+  });
+}
+
+function renderCareer() {
+  const container = document.getElementById('career-content');
+  if (!container) return;
+
+  const allTeams = new Set();
+  const myTeamsMap = {};
+  const trophies = [];
+  let totalMatches = 0, totalGoals = 0, totalAssists = 0, totalMvp = 0;
+  let ratingSum = 0, ratingCount = 0;
+  let bestRating = 0, bestRatingTournament = '';
+  let totalChampionships = 0;
+  const h2h = {};
+  const seasonHistory = [];
+
+  seasons.forEach((s, sIdx) => {
+    const sTeams = new Set();
+    let sMatches = 0, sGoals = 0, sAssists = 0, sMvp = 0;
+    let sRating = 0, sRatingCount = 0;
+    let sChampionships = 0;
+
+    Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+      (t.teams || []).forEach(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        if (!gt) return;
+        allTeams.add(te.teamId);
+        sTeams.add(te.teamId);
+        if (gt.isMe) {
+          const mapKey = gt.name + '|' + gt.flag;
+          if (!myTeamsMap[mapKey]) {
+            myTeamsMap[mapKey] = { name: gt.name, flag: gt.flag, seasons: [] };
+          }
+          if (!myTeamsMap[mapKey].seasons.includes(s.year)) myTeamsMap[mapKey].seasons.push(s.year);
+
+          sMatches += te.w + te.d + te.l;
+
+          (t.teams || []).forEach(opp => {
+            if (opp.teamId === te.teamId) return;
+            const oppGt = (s.globalTeams || []).find(g => g.id === opp.teamId);
+            if (!oppGt) return;
+            const h2hKey = [gt.name, oppGt.name].sort().join(' vs ');
+            if (!h2h[h2hKey]) h2h[h2hKey] = { team1: gt.name, team1Flag: gt.flag, team2: oppGt.name, team2Flag: oppGt.flag, w: 0, d: 0, l: 0 };
+            h2h[h2hKey].w += te.h2h[0];
+            h2h[h2hKey].d += te.h2h[1];
+            h2h[h2hKey].l += te.h2h[2];
+          });
+        }
+      });
+
+      sGoals += t.summary?.goals || 0;
+      sAssists += t.summary?.assists || 0;
+      sMvp += t.summary?.mvp || 0;
+      if (t.summary?.rating > 0) { sRating += t.summary.rating; sRatingCount++; }
+
+      const myEntry = (t.teams || []).find(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        return gt && gt.isMe;
+      });
+      if (myEntry) {
+        const rank = t.teams.indexOf(myEntry) + 1;
+        const isChamp = (rank === 1 && !t.hasPlayoff) ||
+          (t.hasPlayoff && t.playoffMatches?.length > 0 &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
+        if (isChamp) {
+          sChampionships++;
+          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
+        } else if (rank === 2) {
+          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
+        }
+        if (t.topScorer === 1) {
+          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+        }
+      }
+    });
+
+    totalMatches += sMatches;
+    totalGoals += sGoals;
+    totalAssists += sAssists;
+    totalMvp += sMvp;
+    totalChampionships += sChampionships;
+    if (sRatingCount > 0) { ratingSum += sRating; ratingCount += sRatingCount; }
+    const avgRating = sRatingCount > 0 ? (sRating / sRatingCount).toFixed(1) : null;
+    if (avgRating && parseFloat(avgRating) > bestRating) {
+      bestRating = parseFloat(avgRating);
+      bestRatingTournament = s.year;
+    }
+
+    seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, rating: avgRating, championships: sChampionships, teams: sTeams.size });
+  });
+
+  const myTeams = Object.values(myTeamsMap).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
+  const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
+
+  const formatSeasons = (seasons) => {
+    if (seasons.length === 1) return String(seasons[0]);
+    return `${seasons[0]}–${seasons[seasons.length - 1]}`;
+  };
+
+  let html = '';
+
+  html += `<div class="career-section">
+    <div class="career-section-title">📊 Обзор карьеры</div>
+    <div class="career-grid">
+      <div class="career-stat highlight"><div class="label">🏆 Чемпионства</div><div class="value">${totalChampionships}</div><div class="sub">${seasons.length} сезонов</div></div>
+      <div class="career-stat"><div class="label">⚽ Матчей</div><div class="value">${totalMatches}</div><div class="sub">${allTeams.size} команд</div></div>
+      <div class="career-stat"><div class="label">🎯 Голов</div><div class="value">${totalGoals}</div><div class="sub">${totalAssists} ассистов</div></div>
+      <div class="career-stat"><div class="label">⭐ Рейтинг</div><div class="value">${avgRatingAll}</div><div class="sub">${totalMvp} МВП</div></div>
+    </div>
+  </div>`;
+
+  if (myTeams.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">⚽ Мои команды</div>
+      ${myTeams.map(team => `
+        <div class="career-row">
+          <div class="flag">${team.flag || '🏳️'}</div>
+          <div class="info">
+            <div class="name">${escapeHtml(team.name)}</div>
+            <div class="meta">Сезоны: ${formatSeasons(team.seasons)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (trophies.length > 0) {
+    const sorted = trophies.sort((a, b) => b.season - a.season);
+    html += `<div class="career-section">
+      <div class="career-section-title">🏆 Достижения</div>
+      <div style="display:flex; flex-wrap:wrap; gap:4px;">
+        ${sorted.map(t => {
+          const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : '';
+          const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : '';
+          return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (seasonHistory.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📅 История сезонов</div>
+      ${seasonHistory.map(s => `
+        <div class="career-row">
+          <div class="info">
+            <div class="name">${s.year}</div>
+            <div class="meta">${s.matches} матчей · ${s.goals} голов · ${s.assists} ассистов · ${s.rating || '—'} рейтинг${s.championships > 0 ? ' · 🏆 ' + s.championships : ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (h2hList.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🤝 Постоянные встречи</div>
+      ${h2hList.map(h => `
+        <div class="career-row">
+          <div class="flag">${h.team1Flag || '🏳️'}</div>
+          <div class="info">
+            <div class="name">${escapeHtml(h.team1)} vs ${escapeHtml(h.team2)}</div>
+            <div class="meta">${h.w} побед · ${h.d} ничьих · ${h.l} поражений</div>
+          </div>
+          <div class="flag">${h.team2Flag || '🏳️'}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (bestRating > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🌟 Достижения</div>
+      <div class="career-grid">
+        <div class="career-stat highlight"><div class="label">Лучший рейтинг</div><div class="value">${bestRating}</div><div class="sub">Сезон ${bestRatingTournament}</div></div>
+        <div class="career-stat"><div class="label">Всего голов</div><div class="value">${totalGoals}</div><div class="sub">за ${totalMatches} матчей</div></div>
+        <div class="career-stat"><div class="label">Точность</div><div class="value">${totalMatches > 0 ? ((totalGoals / totalMatches) * 100).toFixed(0) : 0}%</div><div class="sub">голов за матч</div></div>
+        <div class="career-stat"><div class="label">Сезонов</div><div class="value">${seasons.length}</div><div class="sub">${seasonHistory.reduce((s, h) => s + h.championships, 0)} чемпионств</div></div>
+      </div>
+    </div>`;
+  }
+
+  if (html === '') {
+    html = '<div class="empty">Пока нет данных для карьеры. Начни играть!</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function renderAllCharts() {
+  renderSummaryStats();
+  renderPointsChart();
+  renderFormSelector();
+  renderFormChart();
+  renderTopsChart();
+  renderGoalsAssistsChart();
+  renderDiffChart();
+  renderProgressChart();
+  renderEfficiencyChart();
+  renderRatingChart();
+  renderAchievementsChart();
+  renderPieChart();
+}
+
+// ============ INIT ============
+const loaded = loadFromLocalStorage();
+if (!loaded) {
+  initDefaults();
+  seasons = [{
+    year: 2025,
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  }];
+  currentSeasonIdx = 0;
+}
+fullRender();
+saveToLocalStorage();
+
+document.getElementById('tournament-modal').addEventListener('click', (e) => { if (e.target.id === 'tournament-modal') closeModal(); });
+document.getElementById('data-modal').addEventListener('click', (e) => { if (e.target.id === 'data-modal') closeDataModal(); });
+document.getElementById('new-season-modal').addEventListener('click', (e) => { if (e.target.id === 'new-season-modal') closeNewSeasonModal(); });
+document.getElementById('flag-modal').addEventListener('click', (e) => { if (e.target.id === 'flag-modal') closeFlagModal(); });
+document.getElementById('presets-modal').addEventListener('click', (e) => { if (e.target.id === 'presets-modal') closePresetsModal(); });
+document.getElementById('team-manager-modal').addEventListener('click', (e) => { if (e.target.id === 'team-manager-modal') closeTeamManager(); });
+window.addEventListener('beforeunload', saveToLocalStorage);
