@@ -244,6 +244,15 @@
 
   .top-stats { display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; margin-bottom: 16px; }
   .top-stats-title { font-size: 14px; font-weight: 600; width: 100%; margin-bottom: 4px; }
+
+  .guide-banner { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #93c5fd; padding: 20px; margin-bottom: 24px; border-radius: 4px; }
+  .guide-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #1e40af; }
+  .guide-steps { display: flex; flex-direction: column; gap: 10px; }
+  .guide-step { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text); }
+  .guide-step-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .guide-step b { font-weight: 600; }
+  .guide-close { float: right; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); padding: 0 4px; line-height: 1; }
+  .guide-close:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -262,6 +271,20 @@
   </header>
   
   <div class="tabs" id="main-tabs"></div>
+  
+  <div id="guide-banner" style="display:none;">
+    <div class="guide-banner">
+      <button class="guide-close" onclick="closeGuide()" title="Скрыть">&times;</button>
+      <div class="guide-title">👋 Добро пожаловать! Как пользоваться генератором:</div>
+      <div class="guide-steps">
+        <div class="guide-step"><span class="guide-step-num">1</span><span>Перейди в <b>⚙️ Настройки</b> и добавь команды (название, флаг, отметь «Ваша»)</span></div>
+        <div class="guide-step"><span class="guide-step-num">2</span><span>Добавь турнир: используй <b>📦 Пресеты</b> (АПЛ, Ла Лига, Лига Чемпионов...) или создай пустой</span></div>
+        <div class="guide-step"><span class="guide-step-num">3</span><span>В турнире добавь команды и заполни результаты (победы, ничьи, поражения)</span></div>
+        <div class="guide-step"><span class="guide-step-num">4</span><span>Заполни плей-офф (если есть) и итоги турнира</span></div>
+        <div class="guide-step"><span class="guide-step-num">5</span><span>Нажми <b>Сгенерировать</b> и <b>Копировать</b> — готовый текст можно вставить куда угодно!</span></div>
+      </div>
+    </div>
+  </div>
   
   <div id="panels-container"></div>
   
@@ -773,105 +796,8 @@ function emptyTournament(emoji, name, rounds, hasPlayoff = false, playoffFormat 
 }
 
 function initDefaults() {
-  tournamentOrder = ['laliga', 'europa', 'cup', 'wc'];
-  globalTeams = [
-    { id: 'real_betiz', name: 'Real Betiz', isMe: true, flag: '🇪🇸' },
-    { id: 'bacelona', name: 'Bacelona', isMe: false, flag: '🇪🇸' },
-    { id: 'r_madrid', name: 'R-Madrid', isMe: false, flag: '🇪🇸' },
-    { id: 'atlet_madrid', name: 'Atlet Madrid', isMe: false, flag: '🇪🇸' },
-    { id: 'vilarreal', name: 'Vilarreal', isMe: false, flag: '🇪🇸' },
-    { id: 'sevila', name: 'Sevila', isMe: false, flag: '🇪🇸' },
-    { id: 'rb_leipzi', name: 'RB Leipzi', isMe: false, flag: '🇩🇪' },
-    { id: 'veronaa', name: 'Veronaa', isMe: false, flag: '🇮🇹' },
-    { id: 'fk_soch', name: 'FK Soch', isMe: false, flag: '🇷🇺' },
-    { id: 'westhan', name: 'WestHan', isMe: false, flag: FLAG_ENGLAND },
-    { id: 'roma', name: 'Roma', isMe: false, flag: '🇮🇹' },
-    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: FLAG_ENGLAND },
-    { id: 'monacco', name: 'Monacco', isMe: false, flag: '🇲🇨' },
-    { id: 'allmeria', name: 'Allmeria', isMe: false, flag: '🇪🇸' },
-    { id: 'vallencia', name: 'Vallencia', isMe: false, flag: '🇪🇸' },
-    { id: 'ibiz_evissa', name: 'Ibiz Evissa', isMe: false, flag: '🇪🇸' },
-    { id: 'athlet_billbao', name: 'Athlet Billbao', isMe: false, flag: '🇪🇸' },
-    { id: 'real_socied', name: 'Real Socied', isMe: false, flag: '🇪🇸' },
-    { id: 'rus', name: 'RUS', isMe: true, flag: '🇷🇺' },
-    { id: 'cro', name: 'CRO', isMe: false, flag: '🇭🇷' },
-    { id: 'pol', name: 'POL', isMe: false, flag: '🇵🇱' },
-    { id: 'sco', name: 'SCO', isMe: false, flag: FLAG_SCOTLAND },
-    { id: 'cze', name: 'CZE', isMe: false, flag: '🇨🇿' },
-    { id: 'rom', name: 'ROM', isMe: false, flag: '🇷🇴' }
-  ];
-  
-  tournaments.laliga = emptyTournament('🇪🇸', 'Ла Лига', 38);
-  tournaments.laliga.isInternational = false;
-  tournaments.laliga.teams = [
-    { teamId: 'real_betiz', w: 31, d: 7, l: 0, h2h: [0,0,0] },
-    { teamId: 'bacelona', w: 28, d: 7, l: 3, h2h: [2,0,0] },
-    { teamId: 'r_madrid', w: 24, d: 5, l: 9, h2h: [1,1,0] },
-    { teamId: 'atlet_madrid', w: 23, d: 7, l: 8, h2h: [1,1,0] },
-    { teamId: 'vilarreal', w: 18, d: 11, l: 9, h2h: [1,1,0] },
-    { teamId: 'sevila', w: 18, d: 11, l: 9, h2h: [1,1,0] }
-  ];
-  tournaments.laliga.topScorer = 2;
-  tournaments.laliga.topAssist = 2;
-  tournaments.laliga.summary = { goals: 34, assists: 15, mvp: 4, accuracy: 64, rating: 8.6 };
-  
-  tournaments.europa = emptyTournament('🇪🇺', 'Лига Европы', 6, true, 'double');
-  tournaments.europa.isInternational = true;
-  tournaments.europa.teams = [
-    { teamId: 'real_betiz', w: 5, d: 1, l: 0, h2h: [0,0,0] },
-    { teamId: 'rb_leipzi', w: 2, d: 1, l: 3, h2h: [1,1,0] },
-    { teamId: 'veronaa', w: 2, d: 1, l: 3, h2h: [2,0,0] },
-    { teamId: 'fk_soch', w: 1, d: 1, l: 4, h2h: [2,0,0] }
-  ];
-  tournaments.europa.topScorer = 1;
-  tournaments.europa.topAssist = 4;
-  tournaments.europa.reachedPlayoff = true;
-  tournaments.europa.groupCollapsed = true;
-  tournaments.europa.playoffMatches = [
-    { round: '1/8', opponentTeamId: 'westhan', result: 'draw', isHome: true },
-    { round: '1/8', opponentTeamId: 'westhan', result: 'win', isHome: false },
-    { round: '1/4', opponentTeamId: 'roma', result: 'win', isHome: true },
-    { round: '1/4', opponentTeamId: 'roma', result: 'win', isHome: false },
-    { round: '1/2', opponentTeamId: 'arsnal', result: 'win', isHome: false },
-    { round: '1/2', opponentTeamId: 'arsnal', result: 'win', isHome: true },
-    { round: 'Final', opponentTeamId: 'monacco', result: 'loss', isHome: false }
-  ];
-  tournaments.europa.summary = { goals: 17, assists: 5, mvp: 2, accuracy: 68, rating: 8.8 };
-  
-  tournaments.cup = emptyTournament('🇪🇸', 'Кубок Испании', 3, true, 'single');
-  tournaments.cup.isInternational = false;
-  tournaments.cup.customFormat = { '1/8': 1, '1/4': 1, '1/2': 1, 'Final': 1 };
-  tournaments.cup.teams = [
-    { teamId: 'real_betiz', w: 3, d: 0, l: 0, h2h: [0,0,0] },
-    { teamId: 'allmeria', w: 2, d: 0, l: 1, h2h: [1,0,0] },
-    { teamId: 'vallencia', w: 1, d: 0, l: 2, h2h: [1,0,0] },
-    { teamId: 'ibiz_evissa', w: 0, d: 0, l: 3, h2h: [1,0,0] }
-  ];
-  tournaments.cup.topScorer = 2;
-  tournaments.cup.topAssist = 3;
-  tournaments.cup.reachedPlayoff = true;
-  tournaments.cup.groupCollapsed = true;
-  tournaments.cup.playoffMatches = [
-    { round: '1/8', opponentTeamId: 'athlet_billbao', result: 'win', isHome: false },
-    { round: '1/4', opponentTeamId: 'bacelona', result: 'win', isHome: false },
-    { round: '1/2', opponentTeamId: 'real_socied', result: 'win', isHome: false },
-    { round: 'Final', opponentTeamId: 'sevila', result: 'win', isHome: false }
-  ];
-  tournaments.cup.summary = { goals: 8, assists: 4, mvp: 1, accuracy: 80, rating: 9.4 };
-  
-  tournaments.wc = emptyTournament('🌍', 'Квалификация ЧМ', 10);
-  tournaments.wc.isInternational = true;
-  tournaments.wc.teams = [
-    { teamId: 'cro', w: 6, d: 3, l: 1, h2h: [1,1,0] },
-    { teamId: 'rus', w: 5, d: 5, l: 0, h2h: [0,0,0] },
-    { teamId: 'pol', w: 4, d: 4, l: 2, h2h: [1,1,0] },
-    { teamId: 'sco', w: 3, d: 1, l: 6, h2h: [2,0,0] },
-    { teamId: 'rom', w: 1, d: 4, l: 5, h2h: [0,2,0] },
-    { teamId: 'cze', w: 1, d: 3, l: 6, h2h: [1,1,0] }
-  ];
-  tournaments.wc.topScorer = 5;
-  tournaments.wc.topAssist = 3;
-  tournaments.wc.summary = { goals: 5, assists: 3, mvp: 0, accuracy: 38, rating: 7.1 };
+  tournamentOrder = [];
+  globalTeams = [];
 }
 
 function getTeamById(teamId) {
@@ -2176,7 +2102,7 @@ function generate() {
     });
     
     const seasonParts = [];
-    if (seasonTotal.trophies > 0) seasonParts.push(''.repeat(seasonTotal.trophies));
+    if (seasonTotal.trophies > 0) seasonParts.push('🏆'.repeat(seasonTotal.trophies));
     if (seasonTotal.goldenBoots > 0) seasonParts.push('🏅'.repeat(seasonTotal.goldenBoots));
     seasonParts.push(`${seasonTotal.matches} матчей`);
     seasonParts.push(`${seasonTotal.goals} голов`);
@@ -2243,7 +2169,23 @@ function resetAll() {
   switchTab(tournamentOrder[0]);
 }
 
+function showGuide() {
+  const guideHidden = getCookie('guide_hidden');
+  const banner = document.getElementById('guide-banner');
+  if (!guideHidden && banner) {
+    banner.style.display = tournamentOrder.length === 0 ? 'block' : 'none';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
+function closeGuide() {
+  setCookie('guide_hidden', '1', 365);
+  document.getElementById('guide-banner').style.display = 'none';
+}
+
 function fullRender() {
+  showGuide();
   renderTabs();
   renderPanels();
   tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
