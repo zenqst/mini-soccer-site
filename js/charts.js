@@ -461,14 +461,18 @@ function renderCareer() {
           (t.hasPlayoff && t.playoffMatches?.length > 0 &&
            t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
            t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
+        const isSilver = (rank === 2 && !t.hasPlayoff) ||
+          (t.hasPlayoff && t.playoffMatches?.length > 0 &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.result === 'loss');
         if (isChamp) {
           sChampionships++;
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
-        } else if (rank === 2) {
+        } else if (isSilver) {
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
         }
         if (t.topScorer === 1) {
-          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+          trophies.push({ emoji: '⚽', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
         }
       }
     });
