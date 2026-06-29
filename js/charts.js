@@ -474,10 +474,14 @@ function renderCareer() {
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
         }
         if (t.topScorer === 1) {
-          trophies.push({ emoji: '⚽', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
         }
       }
     });
+
+    if (s.goldenBall) {
+      trophies.push({ emoji: '🏆', name: 'Золотой Мяч', season: s.year, type: 'ball' });
+    }
 
     totalMatches += sMatches;
     totalGoals += sGoals;
@@ -536,8 +540,8 @@ function renderCareer() {
       <div class="career-section-title">🏆 Достижения</div>
       <div style="display:flex; flex-wrap:wrap; gap:4px;">
         ${sorted.map(t => {
-          const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : '';
-          const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : '';
+          const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : t.type === 'ball' ? ' ball' : '';
+          const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : t.type === 'ball' ? '' : '';
           return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
         }).join('')}
       </div>

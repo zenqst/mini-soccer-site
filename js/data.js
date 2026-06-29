@@ -103,7 +103,7 @@ function selectFlag(flag) {
 // ============ ПРЕСЕТЫ ТУРНИРОВ ============
 const TOURNAMENT_PRESETS = [
   { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏴󠁧󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: FLAG_ENGLAND, name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
@@ -687,11 +687,19 @@ function renderSeasonsList() {
         <div class="name">${escapeHtml(String(s.year))} ${isCurrent ? '<span class="my-team-badge">текущий</span>' : ''}</div>
         <div class="meta">${tCount} турниров · ${teamCount} команд</div>
       </div>
+      <label class="checkbox-row" title="Золотой Мяч сезона" style="font-size:12px;">
+        <input type="checkbox" ${s.goldenBall ? 'checked' : ''} onchange="setGoldenBall(${idx}, this.checked)"> ⚽
+      </label>
       ${!isCurrent ? `<button class="btn btn-sm" onclick="switchSeason(${idx})">Открыть</button>` : ''}
       <button class="btn btn-sm" onclick="renameSeason(${idx})">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSeason(${idx})">✕</button>
     `;
     container.appendChild(item);
   });
+}
+
+function setGoldenBall(idx, val) {
+  seasons[idx].goldenBall = val;
+  debouncedSave();
 }
 

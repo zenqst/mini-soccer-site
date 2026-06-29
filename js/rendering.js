@@ -673,7 +673,7 @@ let currentModalKey = null;
 
 const TOURNAMENT_EMOJIS = [
   { v: '🏆', l: '🏆 Кубок' }, { v: '🌍', l: '🌍 Мир/Квалификация' }, { v: '🌎', l: '🌎 Америка' },
-  { v: '🇪🇺', l: '🇪🇺 Европа' }, { v: '🇪🇸', l: '🇪🇸 Испания' }, { v: '🏴󠁧󠁢󠁥󠁧󠁿', l: '🏴 Англия' },
+  { v: '🇪🇺', l: '🇪🇺 Европа' }, { v: '🇪🇸', l: '🇪🇸 Испания' }, { v: FLAG_ENGLAND, l: '🏴 Англия' },
   { v: '🇮🇹', l: '🇮🇹 Италия' }, { v: '🇩🇪', l: '🇩🇪 Германия' }, { v: '🇫🇷', l: '🇫🇷 Франция' },
   { v: '🇷🇺', l: '🇷🇺 Россия' }, { v: '🇵🇹', l: '🇵🇹 Португалия' }, { v: '🇳🇱', l: '🇳🇱 Нидерланды' },
   { v: '🇧🇷', l: '🇧🇷 Бразилия' }, { v: '🇦🇷', l: '🇦🇷 Аргентина' }, { v: '🇨🇱', l: '🇨🇱 Чили' },
@@ -681,7 +681,7 @@ const TOURNAMENT_EMOJIS = [
   { v: '🇯🇵', l: '🇯🇵 Япония' }, { v: '🇰🇷', l: '🇰🇷 Южная Корея' }, { v: '🇨🇳', l: '🇨🇳 Китай' },
   { v: '🇹🇷', l: '🇹🇷 Турция' }, { v: '🇺🇦', l: '🇺🇦 Украина' }, { v: '🇵🇱', l: '🇵🇱 Польша' },
   { v: '🇧🇪', l: '🇧🇪 Бельгия' }, { v: '🇨🇭', l: '🇨🇭 Швейцария' }, { v: '🇦🇹', l: '🇦🇹 Австрия' },
-  { v: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', l: '🏴 Шотландия' }, { v: '🏴󠁧󠁢󠁷󠁬󠁿', l: '🏴 Уэльс' }, { v: '🇮🇪', l: '🇮🇪 Ирландия' },
+  { v: FLAG_SCOTLAND, l: '🏴 Шотландия' }, { v: FLAG_WALES, l: '🏴 Уэльс' }, { v: '🇮🇪', l: '🇮🇪 Ирландия' },
   { v: '🇸🇪', l: '🇸🇪 Швеция' }, { v: '🇩🇰', l: '🇩🇰 Дания' }, { v: '🇳🇴', l: '🇳🇴 Норвегия' },
   { v: '🇨🇿', l: '🇨🇿 Чехия' }, { v: '🇷🇸', l: '🇷🇸 Сербия' }, { v: '🇭🇷', l: '🇭🇷 Хорватия' },
   { v: '🇷🇴', l: '🇷🇴 Румыния' }, { v: '🇬🇷', l: '🇬🇷 Греция' }, { v: '🇭🇺', l: '🇭🇺 Венгрия' }
@@ -1088,12 +1088,13 @@ function generate() {
   const allFinished = tournamentOrder.length > 0 && tournamentOrder.every(key => isTournamentFinished(key));
   
   if (allFinished) {
-    let seasonTotal = { trophies: 0, goldenBoots: 0, matches: 0, goals: 0, assists: 0, mvp: 0, ratingSum: 0, ratingCount: 0 };
+    let seasonTotal = { trophies: 0, goldenBoots: 0, goldenBall: false, matches: 0, goals: 0, assists: 0, mvp: 0, ratingSum: 0, ratingCount: 0 };
     tournamentOrder.forEach(key => {
       const t = tournaments[key];
       const achievement = getAchievement(key);
       if (achievement === 'Чемпионство') seasonTotal.trophies++;
       if (t.topScorer === 1) seasonTotal.goldenBoots++;
+      if (s.goldenBall) seasonTotal.goldenBall = true;
       seasonTotal.matches += getTotalMatches(key);
       seasonTotal.goals += t.summary.goals;
       seasonTotal.assists += t.summary.assists;
@@ -1106,7 +1107,8 @@ function generate() {
     
     const seasonParts = [];
     if (seasonTotal.trophies > 0) seasonParts.push('🏆'.repeat(seasonTotal.trophies));
-    if (seasonTotal.goldenBoots > 0) seasonParts.push('🏅'.repeat(seasonTotal.goldenBoots));
+    if (seasonTotal.goldenBoots > 0) seasonParts.push('👟'.repeat(seasonTotal.goldenBoots));
+    if (seasonTotal.goldenBall) seasonParts.push('⚽');
     seasonParts.push(`${seasonTotal.matches} матчей`);
     seasonParts.push(`${seasonTotal.goals} голов`);
     seasonParts.push(`${seasonTotal.assists} ассистов`);

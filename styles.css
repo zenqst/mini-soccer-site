@@ -269,6 +269,7 @@
   .career-trophy.champ { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
   .career-trophy.silver { background: linear-gradient(135deg, #e8edf2 0%, #c8d3de 40%, #b0b8c4 100%); border-color: #8896a6; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.1); }
   .career-trophy.boot { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
+  .career-trophy.ball { background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 50%, #fdba74 100%); border-color: #f97316; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.1); }
 
   .tm-row { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 4px; flex-wrap: wrap; }
   .tm-row.my-team { background: var(--highlight); }
