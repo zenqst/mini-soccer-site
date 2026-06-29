@@ -1,8 +1,7 @@
 // ============ ФЛАГИ СТРАН ============
-const _tag = (s) => String.fromCodePoint(...[...s].map(c => 0xE0000 + c.charCodeAt(0)));
-const FLAG_ENGLAND = '🏴' + _tag('gbeng') + String.fromCodePoint(0xE007F);
-const FLAG_SCOTLAND = '🏴' + _tag('gbsct') + String.fromCodePoint(0xE007F);
-const FLAG_WALES = '🏴' + _tag('gbwls') + String.fromCodePoint(0xE007F);
+const FLAG_ENGLAND = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}';
+const FLAG_SCOTLAND = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}';
+const FLAG_WALES = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E006E}\u{E007F}';
 const FLAGS = [
   // Европа
   {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_ENGLAND, n:'Англия'}, {f:FLAG_SCOTLAND, n:'Шотландия'},
