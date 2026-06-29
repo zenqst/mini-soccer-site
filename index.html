@@ -253,6 +253,27 @@
   .guide-step b { font-weight: 600; }
   .guide-close { float: right; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); padding: 0 4px; line-height: 1; }
   .guide-close:hover { color: var(--text); }
+
+  .career-section { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+  .career-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .career-grid { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  @media (min-width: 640px) { .career-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  @media (min-width: 900px) { .career-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
+  .career-stat { padding: 14px; background: var(--bg); border: 1px solid var(--border); }
+  .career-stat .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .career-stat .value { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .career-stat .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .career-stat.highlight { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
+  .career-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 6px; }
+  .career-row .flag { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+  .career-row .info { flex: 1; min-width: 0; }
+  .career-row .name { font-size: 14px; font-weight: 500; }
+  .career-row .meta { font-size: 11px; color: var(--text-muted); }
+  .career-row .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; background: var(--accent); color: white; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+  .career-trophy { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: var(--bg); border: 1px solid var(--border); margin: 4px; }
+  .career-trophy .emoji { font-size: 20px; }
+  .career-trophy .text { font-size: 12px; }
+  .career-trophy.champ { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
 </style>
 </head>
 <body>
@@ -387,6 +408,10 @@
     </div>
   </div>
   
+  <div class="panel" id="panel-career">
+    <div id="career-content"></div>
+  </div>
+  
   <div class="actions">
     <button class="btn btn-primary" onclick="generate()">Сгенерировать</button>
     <button class="btn" onclick="copyOutput()">Копировать</button>
@@ -401,7 +426,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.3.1</span>
+    <span>Генератор турнирных таблиц v2.4.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -1281,6 +1306,12 @@ function renderTabs() {
   statsBtn.textContent = '📊 Статистика';
   statsBtn.onclick = () => switchTab('stats');
   container.appendChild(statsBtn);
+  const careerBtn = document.createElement('button');
+  careerBtn.className = 'tab';
+  careerBtn.dataset.tab = 'career';
+  careerBtn.textContent = '⭐ Карьера';
+  careerBtn.onclick = () => switchTab('career');
+  container.appendChild(careerBtn);
   const settingsBtn = document.createElement('button');
   settingsBtn.className = 'tab';
   settingsBtn.dataset.tab = 'settings';
@@ -1298,6 +1329,7 @@ function switchTab(key) {
   if (panel) panel.classList.add('active');
   if (key === 'stats') setTimeout(renderAllCharts, 50);
   if (key === 'settings') renderSettingsPanel();
+  if (key === 'career') renderCareer();
 }
 
 function renderPanels() {
@@ -2683,6 +2715,185 @@ function renderPieChart() {
       plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }
     })
   });
+}
+
+function renderCareer() {
+  const container = document.getElementById('career-content');
+  if (!container) return;
+
+  const allTeams = new Set();
+  const myTeams = [];
+  const trophies = [];
+  let totalMatches = 0, totalGoals = 0, totalAssists = 0, totalMvp = 0;
+  let ratingSum = 0, ratingCount = 0;
+  let bestRating = 0, bestRatingTournament = '';
+  let totalChampionships = 0;
+  const h2h = {};
+  const seasonHistory = [];
+
+  seasons.forEach((s, sIdx) => {
+    const sTeams = new Set();
+    let sMatches = 0, sGoals = 0, sAssists = 0, sMvp = 0;
+    let sRating = 0, sRatingCount = 0;
+    let sChampionships = 0;
+
+    Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+      (t.teams || []).forEach(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        if (!gt) return;
+        allTeams.add(te.teamId);
+        sTeams.add(te.teamId);
+        if (gt.isMe) {
+          if (!myTeams.find(m => m.id === gt.id)) {
+            myTeams.push({ id: gt.id, name: gt.name, flag: gt.flag, seasons: [] });
+          }
+          const myT = myTeams.find(m => m.id === gt.id);
+          if (myT && !myT.seasons.includes(s.year)) myT.seasons.push(s.year);
+
+          sMatches += te.w + te.d + te.l;
+
+          (t.teams || []).forEach(opp => {
+            if (opp.teamId === te.teamId) return;
+            const oppGt = (s.globalTeams || []).find(g => g.id === opp.teamId);
+            if (!oppGt) return;
+            const key2 = [gt.name, oppGt.name].sort().join(' vs ');
+            if (!h2h[key2]) h2h[key2] = { team1: gt.name, team1Flag: gt.flag, team2: oppGt.name, team2Flag: oppGt.flag, w: 0, d: 0, l: 0 };
+            h2h[key2].w += te.h2h[0];
+            h2h[key2].d += te.h2h[1];
+            h2h[key2].l += te.h2h[2];
+          });
+        }
+      });
+
+      sGoals += t.summary?.goals || 0;
+      sAssists += t.summary?.assists || 0;
+      sMvp += t.summary?.mvp || 0;
+      if (t.summary?.rating > 0) { sRating += t.summary.rating; sRatingCount++; }
+
+      const myEntry = (t.teams || []).find(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        return gt && gt.isMe;
+      });
+      if (myEntry) {
+        const rank = t.teams.indexOf(myEntry) + 1;
+        const achievement = rank === 1 && !t.hasPlayoff ? 'Чемпионство' :
+          t.hasPlayoff && t.playoffMatches?.length > 0 && t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' && t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win' ? 'Чемпионство' : '';
+        if (achievement) {
+          sChampionships++;
+          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
+        } else if (rank <= 3) {
+          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: `${rank} место` });
+        }
+      }
+    });
+
+    totalMatches += sMatches;
+    totalGoals += sGoals;
+    totalAssists += sAssists;
+    totalMvp += sMvp;
+    totalChampionships += sChampionships;
+    if (sRatingCount > 0) { ratingSum += sRating; ratingCount += sRatingCount; }
+    const avgRating = sRatingCount > 0 ? (sRating / sRatingCount).toFixed(1) : null;
+    if (avgRating && parseFloat(avgRating) > bestRating) {
+      bestRating = parseFloat(avgRating);
+      bestRatingTournament = s.year;
+    }
+
+    seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, rating: avgRating, championships: sChampionships, teams: sTeams.size });
+  });
+
+  const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
+
+  const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
+
+  const champTrophies = trophies.filter(t => t.type === 'champ');
+  const otherTrophies = trophies.filter(t => t.type !== 'champ');
+
+  let html = '';
+
+  html += `<div class="career-section">
+    <div class="career-section-title">📊 Обзор карьеры</div>
+    <div class="career-grid">
+      <div class="career-stat highlight"><div class="label">🏆 Чемпионства</div><div class="value">${totalChampionships}</div><div class="sub">${seasons.length} сезонов</div></div>
+      <div class="career-stat"><div class="label">⚽ Матчей</div><div class="value">${totalMatches}</div><div class="sub">${allTeams.size} команд</div></div>
+      <div class="career-stat"><div class="label">🎯 Голов</div><div class="value">${totalGoals}</div><div class="sub">${totalAssists} ассистов</div></div>
+      <div class="career-stat"><div class="label">⭐ Рейтинг</div><div class="value">${avgRatingAll}</div><div class="sub">${totalMvp} МВП</div></div>
+    </div>
+  </div>`;
+
+  if (myTeams.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">⚽ Мои команды</div>
+      ${myTeams.map(team => `
+        <div class="career-row">
+          <div class="flag">${team.flag || '🏳️'}</div>
+          <div class="info">
+            <div class="name">${escapeHtml(team.name)}</div>
+            <div class="meta">Сезоны: ${team.seasons.join(', ')}</div>
+          </div>
+          <div class="badge">ваша</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (champTrophies.length > 0 || otherTrophies.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🏆 Витрина трофеев</div>
+      <div style="display:flex; flex-wrap:wrap; gap:4px;">
+        ${champTrophies.map(t => `<div class="career-trophy champ"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} (${t.season})</span></div>`).join('')}
+        ${otherTrophies.map(t => `<div class="career-trophy"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} — ${t.type} (${t.season})</span></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (seasonHistory.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📅 История сезонов</div>
+      ${seasonHistory.map(s => `
+        <div class="career-row">
+          <div class="info">
+            <div class="name">${s.year}</div>
+            <div class="meta">${s.matches} матчей · ${s.goals} голов · ${s.assists} ассистов · ${s.rating || '—'} рейтинг${s.championships > 0 ? ' · 🏆 ' + s.championships : ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (h2hList.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🤝 Постоянные встречи</div>
+      ${h2hList.map(h => `
+        <div class="career-row">
+          <div class="flag">${h.team1Flag || '🏳️'}</div>
+          <div class="info">
+            <div class="name">${escapeHtml(h.team1)} vs ${escapeHtml(h.team2)}</div>
+            <div class="meta">${h.w} побед · ${h.d} ничьих · ${h.l} поражений</div>
+          </div>
+          <div class="flag">${h.team2Flag || '🏳️'}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  if (bestRating > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🌟 Достижения</div>
+      <div class="career-grid">
+        <div class="career-stat highlight"><div class="label">Лучший рейтинг</div><div class="value">${bestRating}</div><div class="sub">Сезон ${bestRatingTournament}</div></div>
+        <div class="career-stat"><div class="label">Всего голов</div><div class="value">${totalGoals}</div><div class="sub">за ${totalMatches} матчей</div></div>
+        <div class="career-stat"><div class="label">Точность</div><div class="value">${totalMatches > 0 ? ((totalGoals / totalMatches) * 100).toFixed(0) : 0}%</div><div class="sub">голов за матч</div></div>
+        <div class="career-stat"><div class="label">Сезонов</div><div class="value">${seasons.length}</div><div class="sub">${seasonHistory.reduce((s, h) => s + h.championships, 0)} чемпионств</div></div>
+      </div>
+    </div>`;
+  }
+
+  if (html === '') {
+    html = '<div class="empty">Пока нет данных для карьеры. Начни играть!</div>';
+  }
+
+  container.innerHTML = html;
 }
 
 function renderAllCharts() {
