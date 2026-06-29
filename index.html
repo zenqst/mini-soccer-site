@@ -106,6 +106,7 @@
         <span>📅 Сезоны</span>
         <div style="display:flex; gap:6px;">
           <button class="btn btn-sm" onclick="duplicateCurrentSeason()"> Дублировать</button>
+          <button class="btn btn-sm" onclick="openQuickSeasonModal()">⚡ Быстрый</button>
           <button class="btn btn-sm btn-primary" onclick="openNewSeasonModal()">+ Новый</button>
         </div>
       </div>
@@ -158,7 +159,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.13.3</span>
+    <span>Генератор турнирных таблиц v2.14.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -309,6 +310,34 @@
     <div class="modal-footer">
       <button class="btn btn-primary" onclick="addGlobalTeam(); renderTeamManager();">+ Команда</button>
       <button class="btn" onclick="closeTeamManager()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="quick-season-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Быстрый сезон</div>
+      <button class="modal-close" onclick="closeQuickSeasonModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <span class="field-label">Год сезона</span>
+        <input type="text" inputmode="numeric" id="qs-year" placeholder="2024">
+      </div>
+      <div class="field-group">
+        <span class="field-label">Команда</span>
+        <select id="qs-team"></select>
+      </div>
+      <div class="field-group">
+        <span class="field-label">Турниры сезона (заполни по одному)</span>
+      </div>
+      <div id="qs-tournaments"></div>
+      <button class="btn btn-sm" onclick="addQuickTournament()" style="margin-top:8px;">+ Турнир</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeQuickSeasonModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveQuickSeason()">Создать</button>
     </div>
   </div>
 </div>

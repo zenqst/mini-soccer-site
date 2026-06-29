@@ -889,6 +889,112 @@ function formatSeasonRange(years) {
   return `${sorted[0]}–${sorted[sorted.length - 1]}`;
 }
 
+let quickTournamentCount = 0;
+
+function openQuickSeasonModal() {
+  quickTournamentCount = 0;
+  const teamSelect = document.getElementById('qs-team');
+  teamSelect.innerHTML = getSortedTeams().map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}</option>`).join('');
+  document.getElementById('qs-year').value = seasons.length > 0 ? (Math.max(...seasons.map(s => Number(s.year))) + 1) : 2025;
+  document.getElementById('qs-tournaments').innerHTML = '';
+  addQuickTournament();
+  document.getElementById('quick-season-modal').classList.add('show');
+}
+
+function closeQuickSeasonModal() {
+  document.getElementById('quick-season-modal').classList.remove('show');
+}
+
+function addQuickTournament() {
+  quickTournamentCount++;
+  const id = 'qs-t-' + quickTournamentCount;
+  const container = document.getElementById('qs-tournaments');
+  const div = document.createElement('div');
+  div.className = 'qs-tournament';
+  div.id = id;
+  div.innerHTML = `
+    <div class="qs-t-header">
+      <strong>Турнир ${quickTournamentCount}</strong>
+      <button class="btn btn-danger btn-sm" onclick="this.closest('.qs-tournament').remove()">✕</button>
+    </div>
+    <div class="qs-t-grid">
+      <div class="field-group"><span class="field-label">Турнир</span><select class="qs-t-name">${TOURNAMENT_PRESETS.map(p => `<option value="${escapeHtml(p.name)}">${p.emoji} ${escapeHtml(p.name)}</option>`).join('')}<option value="custom">📝 Другой</option></select></div>
+      <div class="field-group"><span class="field-label">Результат</span><select class="qs-result"><option value="champ">🏆 Чемпион</option><option value="silver">🥈 2 место</option><option value="other">Другое</option></select></div>
+      <div class="field-group"><span class="field-label">Матчей</span><input type="text" inputmode="numeric" class="qs-matches" placeholder="0"></div>
+      <div class="field-group"><span class="field-label">Голов</span><input type="text" inputmode="numeric" class="qs-goals" placeholder="0"></div>
+      <div class="field-group"><span class="field-label">Ассистов</span><input type="text" inputmode="numeric" class="qs-assists" placeholder="0"></div>
+      <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" class="qs-mvp" placeholder="0"></div>
+      <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" class="qs-accuracy" placeholder="0"></div>
+      <div class="field-group"><span class="field-label">Рейтинг</span><input type="text" inputmode="decimal" class="qs-rating" placeholder="0.0"></div>
+      <div class="field-group"><label class="checkbox-row"><input type="checkbox" class="qs-boot"> 👟 Золотая бутса</label></div>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function saveQuickSeason() {
+  const year = parseIntSafe(document.getElementById('qs-year').value);
+  if (!year || year < 1900 || year > 2100) { showToast('Введи год'); return; }
+  const teamId = document.getElementById('qs-team').value;
+  if (!teamId) { showToast('Выбери команду'); return; }
+  
+  const team = globalTeams.find(t => t.id === teamId);
+  if (!team) { showToast('Команда не найдена'); return; }
+  
+  const tournamentDivs = document.querySelectorAll('.qs-tournament');
+  if (tournamentDivs.length === 0) { showToast('Добавь хотя бы один турнир'); return; }
+  
+  syncCurrentSeason();
+  const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false, isMe: t.id === teamId }));
+  const newTournaments = {};
+  const newTournamentOrder = [];
+  
+  tournamentDivs.forEach((div, idx) => {
+    const name = div.querySelector('.qs-t-name').value;
+    const result = div.querySelector('.qs-result').value;
+    const matches = parseIntSafe(div.querySelector('.qs-matches').value);
+    const goals = parseIntSafe(div.querySelector('.qs-goals').value);
+    const assists = parseIntSafe(div.querySelector('.qs-assists').value);
+    const mvp = parseIntSafe(div.querySelector('.qs-mvp').value);
+    const accuracy = parseIntSafe(div.querySelector('.qs-accuracy').value);
+    const rating = parseNum(div.querySelector('.qs-rating').value);
+    const boot = div.querySelector('.qs-boot').checked;
+    
+    const preset = TOURNAMENT_PRESETS.find(p => p.name === name);
+    const key = 'quick_' + year + '_' + idx;
+    const emoji = preset ? preset.emoji : '🏆';
+    const rounds = preset ? preset.rounds : matches;
+    const hasPlayoff = preset ? preset.hasPlayoff : (result !== 'other');
+    
+    newTournaments[key] = emptyTournament(emoji, name, rounds, hasPlayoff, preset?.format || 'single');
+    if (preset) {
+      newTournaments[key].customFormat = { ...preset.customFormat };
+      newTournaments[key].pointsPerWin = preset.ptsWin;
+      newTournaments[key].pointsPerDraw = preset.ptsDraw;
+      newTournaments[key].isInternational = preset.international;
+    }
+    newTournaments[key].teams = [{ teamId, w: 0, d: 0, l: 0, h2h: [0, 0, 0] }];
+    newTournaments[key].summary = { goals, assists, mvp, accuracy, rating };
+    newTournaments[key].topScorer = boot ? 1 : null;
+    if (result === 'champ') {
+      newTournaments[key].reachedPlayoff = hasPlayoff;
+      newTournaments[key].playoffMatches = [{ round: 'Final', opponentTeamId: '', result: 'win', isHome: false }];
+    } else if (result === 'silver' && hasPlayoff) {
+      newTournaments[key].reachedPlayoff = true;
+      newTournaments[key].playoffMatches = [{ round: 'Final', opponentTeamId: '', result: 'loss', isHome: false }];
+    }
+    newTournamentOrder.push(key);
+  });
+  
+  const newSeason = { year, tournamentOrder: newTournamentOrder, tournaments: newTournaments, globalTeams: copiedTeams };
+  seasons.push(newSeason);
+  
+  closeQuickSeasonModal();
+  fullRender();
+  saveToLocalStorage();
+  showToast(`✅ Быстрый сезон ${year} создан`);
+}
+
 function switchDataTab(tab) {
   document.querySelectorAll('.data-modal-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.data-modal-panel').forEach(p => p.classList.remove('active'));
