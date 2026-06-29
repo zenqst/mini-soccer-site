@@ -402,15 +402,19 @@ function renderCareer() {
   const myTeamSeenInSeason = {};
   const trophies = [];
   let totalMatches = 0, totalGoals = 0, totalAssists = 0, totalMvp = 0;
+  let totalWins = 0, totalDraws = 0, totalLosses = 0;
   let ratingSum = 0, ratingCount = 0;
   let bestRating = 0, bestRatingTournament = '';
   let totalChampionships = 0;
   const h2h = {};
   const seasonHistory = [];
+  const tournamentStats = {};
+  let firstMatchSeason = null, firstWinSeason = null, firstTrophySeason = null;
 
   seasons.forEach((s, sIdx) => {
     const sTeams = new Set();
     let sMatches = 0, sGoals = 0, sAssists = 0, sMvp = 0;
+    let sWins = 0, sDraws = 0, sLosses = 0;
     let sRating = 0, sRatingCount = 0;
     let sChampionships = 0;
 
@@ -432,6 +436,12 @@ function renderCareer() {
           }
 
           sMatches += te.w + te.d + te.l;
+          sWins += te.w;
+          sDraws += te.d;
+          sLosses += te.l;
+
+          if (!tournamentStats[t.name]) tournamentStats[t.name] = { emoji: t.emoji, wins: 0, trophies: 0 };
+          tournamentStats[t.name].wins += te.w;
 
           (t.teams || []).forEach(opp => {
             if (opp.teamId === te.teamId) return;
@@ -470,6 +480,8 @@ function renderCareer() {
           if (isChamp) {
             sChampionships++;
             trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
+            if (!tournamentStats[t.name]) tournamentStats[t.name] = { emoji: t.emoji, wins: 0, trophies: 0 };
+            tournamentStats[t.name].trophies++;
           } else if (isSilver) {
             trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
           }
@@ -488,6 +500,9 @@ function renderCareer() {
     totalGoals += sGoals;
     totalAssists += sAssists;
     totalMvp += sMvp;
+    totalWins += sWins;
+    totalDraws += sDraws;
+    totalLosses += sLosses;
     totalChampionships += sChampionships;
     if (sRatingCount > 0) { ratingSum += sRating; ratingCount += sRatingCount; }
     const avgRating = sRatingCount > 0 ? (sRating / sRatingCount).toFixed(1) : null;
@@ -496,12 +511,17 @@ function renderCareer() {
       bestRatingTournament = s.year;
     }
 
-    seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, rating: avgRating, championships: sChampionships, teams: sTeams.size });
+    if (sMatches > 0 && !firstMatchSeason) firstMatchSeason = s.year;
+    if (sWins > 0 && !firstWinSeason) firstWinSeason = s.year;
+    if (sChampionships > 0 && !firstTrophySeason) firstTrophySeason = s.year;
+
+    seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, wins: sWins, draws: sDraws, losses: sLosses, rating: avgRating, championships: sChampionships, teams: sTeams.size });
   });
 
   const myTeams = Object.values(myTeamsMap).sort((a, b) => Math.max(...b.seasons.map(Number)) - Math.max(...a.seasons.map(Number)));
   const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
-  const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
+  const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 10);
+  const bestTournament = Object.entries(tournamentStats).sort((a, b) => b[1].trophies - a[1].trophies || b[1].wins - a[1].wins)[0];
 
   const formatSeasons = (seasons) => {
     if (seasons.length === 1) return String(seasons[0]);
@@ -519,6 +539,18 @@ function renderCareer() {
       <div class="career-stat"><div class="label">⭐ Рейтинг</div><div class="value">${avgRatingAll}</div><div class="sub">${totalMvp} МВП</div></div>
     </div>
   </div>`;
+
+  if (totalMatches > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📈 Статистика матчей</div>
+      <div class="career-grid">
+        <div class="career-stat"><div class="label">Победы</div><div class="value" style="color:#10b981;">${totalWins}</div><div class="sub">${totalMatches > 0 ? ((totalWins/totalMatches)*100).toFixed(0) : 0}%</div></div>
+        <div class="career-stat"><div class="label">Ничьи</div><div class="value" style="color:#f59e0b;">${totalDraws}</div><div class="sub">${totalMatches > 0 ? ((totalDraws/totalMatches)*100).toFixed(0) : 0}%</div></div>
+        <div class="career-stat"><div class="label">Поражения</div><div class="value" style="color:#ef4444;">${totalLosses}</div><div class="sub">${totalMatches > 0 ? ((totalLosses/totalMatches)*100).toFixed(0) : 0}%</div></div>
+        <div class="career-stat"><div class="label">Точность</div><div class="value">${totalMatches > 0 ? ((totalGoals / totalMatches) * 100).toFixed(1) : 0}%</div><div class="sub">голов за матч</div></div>
+      </div>
+    </div>`;
+  }
 
   if (myTeams.length > 0) {
     html += `<div class="career-section">
@@ -549,6 +581,61 @@ function renderCareer() {
     </div>`;
   }
 
+  const milestones = [];
+  if (firstMatchSeason) milestones.push({ icon: '🏟️', text: `Первая игра — ${firstMatchSeason}` });
+  if (firstWinSeason) milestones.push({ icon: '✅', text: `Первая победа — ${firstWinSeason}` });
+  if (firstTrophySeason) milestones.push({ icon: '🏆', text: `Первый трофей — ${firstTrophySeason}` });
+  if (totalGoals >= 100) milestones.push({ icon: '💯', text: `100+ голов (${totalGoals})` });
+  else if (totalGoals >= 50) milestones.push({ icon: '⚽', text: `50+ голов (${totalGoals})` });
+  if (totalMatches >= 100) milestones.push({ icon: '💯', text: `100+ матчей (${totalMatches})` });
+  else if (totalMatches >= 50) milestones.push({ icon: '🏟️', text: `50+ матчей (${totalMatches})` });
+  if (totalChampionships >= 5) milestones.push({ icon: '👑', text: `${totalChampionships} чемпионств — легенда!` });
+  else if (totalChampionships >= 3) milestones.push({ icon: '🏆', text: `${totalChampionships} чемпионства` });
+  if (bestRating >= 9) milestones.push({ icon: '⭐', text: `Рейтинг ${bestRating} — идеально!` });
+
+  if (milestones.length > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🎯 Вехи</div>
+      <div class="career-grid">
+        ${milestones.map(m => `<div class="career-stat"><div class="label">${m.icon}</div><div class="value" style="font-size:14px;">${m.text}</div></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (bestTournament && bestTournament[1].trophies > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🏅 Лучший турнир</div>
+      <div class="career-row">
+        <div class="flag">${bestTournament[1].emoji || '🏆'}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(bestTournament[0])}</div>
+          <div class="meta">${bestTournament[1].trophies} трофеев · ${bestTournament[1].wins} побед</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (seasonHistory.length > 1) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📊 Сравнение сезонов</div>
+      <canvas id="career-comparison-chart" style="width:100%; max-height:300px;"></canvas>
+    </div>`;
+  }
+
+  if (seasonHistory.some(s => s.rating)) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📈 Прогресс рейтинга</div>
+      <canvas id="career-rating-chart" style="width:100%; max-height:250px;"></canvas>
+    </div>`;
+  }
+
+  if (totalMatches > 0) {
+    html += `<div class="career-section">
+      <div class="career-section-title">🥧 Распределение результатов</div>
+      <canvas id="career-pie-chart" style="width:100%; max-height:250px;"></canvas>
+    </div>`;
+  }
+
   if (seasonHistory.length > 0) {
     html += `<div class="career-section">
       <div class="career-section-title">📅 История сезонов</div>
@@ -565,7 +652,7 @@ function renderCareer() {
 
   if (h2hList.length > 0) {
     html += `<div class="career-section">
-      <div class="career-section-title">🤝 Постоянные встречи</div>
+      <div class="career-section-title">🤝 Частые соперники</div>
       ${h2hList.map(h => `
         <div class="career-row">
           <div class="flag">${h.team1Flag || '🏳️'}</div>
@@ -579,23 +666,93 @@ function renderCareer() {
     </div>`;
   }
 
-  if (bestRating > 0) {
-    html += `<div class="career-section">
-      <div class="career-section-title">🌟 Достижения</div>
-      <div class="career-grid">
-        <div class="career-stat highlight"><div class="label">Лучший рейтинг</div><div class="value">${bestRating}</div><div class="sub">Сезон ${bestRatingTournament}</div></div>
-        <div class="career-stat"><div class="label">Всего голов</div><div class="value">${totalGoals}</div><div class="sub">за ${totalMatches} матчей</div></div>
-        <div class="career-stat"><div class="label">Точность</div><div class="value">${totalMatches > 0 ? ((totalGoals / totalMatches) * 100).toFixed(0) : 0}%</div><div class="sub">голов за матч</div></div>
-        <div class="career-stat"><div class="label">Сезонов</div><div class="value">${seasons.length}</div><div class="sub">${seasonHistory.reduce((s, h) => s + h.championships, 0)} чемпионств</div></div>
-      </div>
-    </div>`;
-  }
+  html += `<div class="career-section">
+    <div class="career-section-title">📤 Экспорт</div>
+    <button class="btn btn-primary" onclick="exportCareer()">📋 Скопировать достижения</button>
+  </div>`;
 
   if (html === '') {
     html = '<div class="empty">Пока нет данных для карьеры. Начни играть!</div>';
   }
 
   container.innerHTML = html;
+
+  if (seasonHistory.length > 1) renderCareerComparisonChart(seasonHistory);
+  if (seasonHistory.some(s => s.rating)) renderCareerRatingChart(seasonHistory);
+  if (totalMatches > 0) renderCareerPieChart(totalWins, totalDraws, totalLosses);
+}
+
+function renderCareerComparisonChart(data) {
+  const ctx = document.getElementById('career-comparison-chart');
+  if (!ctx) return;
+  const c = getChartColors();
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.year),
+      datasets: [
+        { label: 'Голы', data: data.map(d => d.goals), backgroundColor: COLORS.green, borderRadius: 4 },
+        { label: 'Ассисты', data: data.map(d => d.assists), backgroundColor: COLORS.blue, borderRadius: 4 },
+        { label: 'Победы', data: data.map(d => d.wins), backgroundColor: '#10b981', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: c.text } } }, scales: { x: { ticks: { color: c.text }, grid: { display: false } }, y: { ticks: { color: c.textMuted }, grid: { color: c.grid } } } }
+  });
+}
+
+function renderCareerRatingChart(data) {
+  const ctx = document.getElementById('career-rating-chart');
+  if (!ctx) return;
+  const c = getChartColors();
+  const filtered = data.filter(d => d.rating);
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: filtered.map(d => d.year),
+      datasets: [{ label: 'Рейтинг', data: filtered.map(d => parseFloat(d.rating)), borderColor: COLORS.amber, backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.3, pointRadius: 5 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: c.text } } }, scales: { x: { ticks: { color: c.text }, grid: { display: false } }, y: { min: 1, max: 10, ticks: { color: c.textMuted }, grid: { color: c.grid } } } }
+  });
+}
+
+function renderCareerPieChart(wins, draws, losses) {
+  const ctx = document.getElementById('career-pie-chart');
+  if (!ctx) return;
+  const c = getChartColors();
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: ['Победы', 'Ничьи', 'Поражения'], datasets: [{ data: [wins, draws, losses], backgroundColor: [COLORS.green, COLORS.amber, COLORS.red], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: c.text } } } }
+  });
+}
+
+function exportCareer() {
+  let text = '⚽ Карьера\n\n';
+  seasons.forEach(s => {
+    let hasData = false;
+    Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+      const my = (t.teams || []).find(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        return gt && gt.isMe;
+      });
+      if (my && (my.w + my.d + my.l) > 0) hasData = true;
+    });
+    if (hasData) {
+      text += `📅 Сезон ${s.year}\n`;
+      Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+        const my = (t.teams || []).find(te => {
+          const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+          return gt && gt.isMe;
+        });
+        if (my && (my.w + my.d + my.l) > 0) {
+          text += `  ${t.emoji} ${t.name}: ${my.w}/${my.d}/${my.l}\n`;
+        }
+      });
+      if (s.goldenBall) text += '  ⚽ Золотой Мяч\n';
+      text += '\n';
+    }
+  });
+  navigator.clipboard.writeText(text).then(() => showToast('📋 Карьера скопирована')).catch(() => showToast('❌ Ошибка копирования'));
 }
 
 function renderAllCharts() {
