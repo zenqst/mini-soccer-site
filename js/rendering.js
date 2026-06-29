@@ -892,13 +892,19 @@ function formatSeasonRange(years) {
 let quickTournamentCount = 0;
 
 function openQuickSeasonModal() {
-  quickTournamentCount = 0;
-  const teamSelect = document.getElementById('qs-team');
-  teamSelect.innerHTML = getSortedTeams().map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}</option>`).join('');
-  document.getElementById('qs-year').value = seasons.length > 0 ? (Math.max(...seasons.map(s => Number(s.year))) + 1) : 2025;
-  document.getElementById('qs-tournaments').innerHTML = '';
-  addQuickTournament();
-  document.getElementById('quick-season-modal').classList.add('show');
+  try {
+    quickTournamentCount = 0;
+    const teamSelect = document.getElementById('qs-team');
+    const teams = getSortedTeams();
+    teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}</option>`).join('');
+    document.getElementById('qs-year').value = seasons.length > 0 ? (Math.max(...seasons.map(s => Number(s.year))) + 1) : 2025;
+    document.getElementById('qs-tournaments').innerHTML = '';
+    addQuickTournament();
+    document.getElementById('quick-season-modal').classList.add('show');
+  } catch (e) {
+    console.error('Quick season modal error:', e);
+    showToast('⚠️ Ошибка: ' + e.message);
+  }
 }
 
 function closeQuickSeasonModal() {
