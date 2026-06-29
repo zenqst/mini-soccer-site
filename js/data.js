@@ -74,11 +74,12 @@ function filterFlags(val) {
 
 function renderFlagsGrid(filter) {
   const grid = document.getElementById('flags-grid');
+  const sorted = [...FLAGS].sort((a, b) => a.n.localeCompare(b.n, 'ru'));
   const filtered = filter 
-    ? FLAGS.filter(f => f.n.toLowerCase().includes(filter) || f.f.includes(filter))
-    : FLAGS;
+    ? sorted.filter(f => f.n.toLowerCase().includes(filter) || f.f.includes(filter))
+    : sorted;
   grid.innerHTML = filtered.map(f => 
-    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag('${f.f}')">${f.f}</button>`
+    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag('${escapeHtml(f.f)}')">${f.f}</button>`
   ).join('');
   if (filtered.length === 0) {
     grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">Ничего не найдено</div>';
@@ -449,9 +450,13 @@ function migrateFlags(data) {
     'CZE': '🇨🇿', 'ROM': '🇷🇴'
   };
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
+  const isUKBroken = (f) => f && f.startsWith('🏴') && f.length < 8;
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
       if (t.visible === undefined) t.visible = true;
+      if (isFlagBroken(t.flag) || isUKBroken(t.flag)) {
+        t.flag = teamFlagByName[t.name] || '🏳️';
+      }
       if (!t.flag || t.flag === '') return;
       if (teamFlagByName[t.name]) {
         t.flag = teamFlagByName[t.name];

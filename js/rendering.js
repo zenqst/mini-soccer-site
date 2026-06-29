@@ -257,7 +257,8 @@ function addGlobalTeam() {
     }
   });
   renderGlobalTeams();
-  tournamentOrder.forEach(k => { renderTeams(k); });
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
   debouncedSave();
 }
 
@@ -274,7 +275,8 @@ function removeGlobalTeam(idx) {
     });
   }
   renderGlobalTeams();
-  tournamentOrder.forEach(k => renderTeams(k));
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
   debouncedSave();
 }
 
@@ -395,7 +397,8 @@ function renderGlobalTeams() {
 function toggleTeamVisible(idx) {
   globalTeams[idx].visible = globalTeams[idx].visible === false ? true : false;
   renderGlobalTeams();
-  tournamentOrder.forEach(k => renderTeams(k));
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
   debouncedSave();
 }
 
@@ -405,9 +408,8 @@ function openFlagForGlobalTeam(idx) {
     team.flag = flag;
     syncTeamAcrossSeasons(team.id, 'flag', flag);
     renderGlobalTeams();
-    tournamentOrder.forEach(k => {
-      updateTeamSelects(k);
-    });
+    renderPanels();
+    tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
     debouncedSave();
   });
 }
