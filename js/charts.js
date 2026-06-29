@@ -457,6 +457,8 @@ function renderCareer() {
       });
       if (myEntry) {
         const rank = t.teams.indexOf(myEntry) + 1;
+        const matchesPlayed = t.teams.reduce((sum, te) => sum + te.w + te.d + te.l, 0);
+        if (matchesPlayed === 0) return;
         const isChamp = (rank === 1 && !t.hasPlayoff) ||
           (t.hasPlayoff && t.playoffMatches?.length > 0 &&
            t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&

@@ -1,8 +1,12 @@
 // ============ ФЛАГИ СТРАН ============
+const _tag = (s) => String.fromCodePoint(...[...s].map(c => 0xE0000 + c.charCodeAt(0)));
+const FLAG_ENGLAND = '🏴' + _tag('gbeng') + String.fromCodePoint(0xE007F);
+const FLAG_SCOTLAND = '🏴' + _tag('gbsct') + String.fromCodePoint(0xE007F);
+const FLAG_WALES = '🏴' + _tag('gbwls') + String.fromCodePoint(0xE007F);
 const FLAGS = [
   // Европа
-  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:'🇬🇧', n:'Англия'}, {f:'🇬🇧', n:'Шотландия'},
-  {f:'🇬🇧', n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_ENGLAND, n:'Англия'}, {f:FLAG_SCOTLAND, n:'Шотландия'},
+  {f:FLAG_WALES, n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
   {f:'🇮🇹', n:'Италия'}, {f:'🇵🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇧🇪', n:'Бельгия'},
   {f:'🇦🇹', n:'Австрия'}, {f:'🇨🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
   {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
@@ -443,18 +447,17 @@ function migrateFlags(data) {
     'Real Betiz': '🇪🇸', 'Bacelona': '🇪🇸', 'R-Madrid': '🇪🇸',
     'Atlet Madrid': '🇪🇸', 'Vilarreal': '🇪🇸', 'Sevila': '🇪🇸',
     'RB Leipzi': '🇩🇪', 'Veronaa': '🇮🇹', 'FK Soch': '🇷🇺',
-    'WestHan': '🇬🇧', 'Roma': '🇮🇹', 'Arsnal': '🇬🇧',
+    'WestHan': FLAG_ENGLAND, 'Roma': '🇮🇹', 'Arsnal': FLAG_ENGLAND,
     'Monacco': '🇲🇨', 'Allmeria': '🇪🇸', 'Vallencia': '🇪🇸',
     'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸',
-    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': '🇬🇧',
+    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': FLAG_SCOTLAND,
     'CZE': '🇨🇿', 'ROM': '🇷🇴'
   };
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
-  const isUKBroken = (f) => f && f.startsWith('🏴') && f.length < 8;
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
       if (t.visible === undefined) t.visible = true;
-      if (isFlagBroken(t.flag) || isUKBroken(t.flag)) {
+      if (isFlagBroken(t.flag)) {
         t.flag = teamFlagByName[t.name] || '🏳️';
       }
       if (!t.flag || t.flag === '') return;
@@ -533,7 +536,8 @@ function loadFromLocalStorage() {
 function updateSeasonSelector() {
   const selector = document.getElementById('season-selector');
   if (!selector) return;
-  selector.innerHTML = seasons.map((s, idx) => 
+  const sorted = seasons.map((s, idx) => ({ s, idx })).sort((a, b) => Number(b.s.year) - Number(a.s.year));
+  selector.innerHTML = sorted.map(({ s, idx }) => 
     `<option value="${idx}" ${idx === currentSeasonIdx ? 'selected' : ''}>Сезон ${s.year}</option>`
   ).join('');
 }
