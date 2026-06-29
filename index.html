@@ -1421,6 +1421,25 @@ function removeTeam(key, idx) {
   debouncedSave();
 }
 
+function addGlobalTeam() {
+  globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '' });
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => updateTeamSelects(k));
+  debouncedSave();
+}
+
+function removeGlobalTeam(idx) {
+  const removed = globalTeams.splice(idx, 1)[0];
+  if (removed) {
+    tournamentOrder.forEach(key => {
+      tournaments[key].teams = tournaments[key].teams.filter(t => t.teamId !== removed.id);
+    });
+  }
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => renderTeams(k));
+  debouncedSave();
+}
+
 function renderGlobalTeams() {
   const container = document.getElementById('global-teams-list');
   if (!container) return;
