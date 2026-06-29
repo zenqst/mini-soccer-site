@@ -245,7 +245,12 @@ function removeTeam(key, idx) {
 }
 
 function addGlobalTeam() {
-  const team = { id: 'team_' + Date.now(), name: '', isMe: false, flag: '', visible: true };
+  let name = 'Новая команда';
+  let counter = 1;
+  while (globalTeams.some(t => t.name === name)) {
+    name = 'Новая команда ' + counter++;
+  }
+  const team = { id: 'team_' + Date.now(), name, isMe: false, flag: '', visible: true };
   globalTeams.push(team);
   seasons.forEach((s, idx) => {
     if (idx !== currentSeasonIdx && !s.globalTeams.find(t => t.id === team.id)) {
@@ -282,6 +287,14 @@ function syncTeamAcrossSeasons(teamId, prop, value) {
   });
 }
 
+let teamsExpanded = false;
+let teamSearchFilter = '';
+
+function filterTeams(val) {
+  teamSearchFilter = val.toLowerCase();
+  renderGlobalTeams();
+}
+
 function renderGlobalTeams() {
   const container = document.getElementById('global-teams-list');
   if (!container) return;
@@ -292,8 +305,16 @@ function renderGlobalTeams() {
   const visible = [];
   const hidden = [];
   globalTeams.forEach((team, idx) => {
-    if (team.visible === false || team.visible === 0 || team.visible === 'false') hidden.push({ team, idx });
-    else visible.push({ team, idx });
+    const isHidden = team.visible === false || team.visible === 0 || team.visible === 'false';
+    if (teamSearchFilter) {
+      if (team.name.toLowerCase().includes(teamSearchFilter) || (team.flag && team.flag.includes(teamSearchFilter))) {
+        if (isHidden) hidden.push({ team, idx });
+        else visible.push({ team, idx });
+      }
+    } else {
+      if (isHidden) hidden.push({ team, idx });
+      else visible.push({ team, idx });
+    }
   });
   visible.sort((a, b) => {
     if (a.team.isMe && !b.team.isMe) return -1;
@@ -303,8 +324,9 @@ function renderGlobalTeams() {
   hidden.sort((a, b) => a.team.name.localeCompare(b.team.name, 'ru'));
 
   function renderTeamItem({ team, idx }) {
+    const isHidden = team.visible === false || team.visible === 0 || team.visible === 'false';
     const item = document.createElement('div');
-    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '') + (team.visible === false ? ' team-hidden' : '');
+    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '') + (isHidden ? ' team-hidden' : '');
     item.innerHTML = `
       <button class="flag-preview" onclick="openFlagForGlobalTeam(${idx})" title="Выбрать флаг">${team.flag || '🏳️'}</button>
       <input type="text" value="${escapeHtml(team.name)}" placeholder="Название команды" style="flex:1; min-width:150px;" data-field="name" data-idx="${idx}" data-focus-id="gteam-${idx}-name">
@@ -312,7 +334,7 @@ function renderGlobalTeams() {
         <input type="checkbox" ${team.isMe ? 'checked' : ''} data-field="isMe" data-idx="${idx}" data-focus-id="gteam-${idx}-isme">
         Ваша
       </label>
-      <button class="icon-btn" onclick="toggleTeamVisible(${idx})" title="${team.visible !== false ? 'Скрыть из выпадающих списков' : 'Показать в выпадающих списках'}" style="font-size:16px;${team.visible === false ? 'opacity:0.3;' : ''}">👁️</button>
+      <button class="icon-btn" onclick="toggleTeamVisible(${idx})" title="${!isHidden ? 'Скрыть из выпадающих списков' : 'Показать в выпадающих списках'}" style="font-size:16px;${isHidden ? 'opacity:0.3;' : ''}">👁️</button>
       <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${idx})">✕</button>
     `;
     
@@ -323,8 +345,16 @@ function renderGlobalTeams() {
         const i = parseInt(e.target.dataset.idx);
         const teamId = globalTeams[i].id;
         if (field === 'name') {
-          globalTeams[i].name = e.target.value;
-          syncTeamAcrossSeasons(teamId, 'name', e.target.value);
+          const newName = e.target.value;
+          const duplicate = globalTeams.find((t, j) => j !== i && t.name.toLowerCase() === newName.toLowerCase() && t.flag === globalTeams[i].flag);
+          if (duplicate && newName.trim()) {
+            e.target.style.borderColor = 'var(--danger)';
+            showToast('⚠️ Такая команда уже есть');
+            return;
+          }
+          e.target.style.borderColor = '';
+          globalTeams[i].name = newName;
+          syncTeamAcrossSeasons(teamId, 'name', newName);
           tournamentOrder.forEach(k => updateTeamSelects(k));
           debouncedSave();
         } else if (field === 'isMe') {
@@ -345,12 +375,19 @@ function renderGlobalTeams() {
     const hint = document.createElement('div');
     hint.className = 'group-collapsed-hint';
     hint.style.cursor = 'pointer';
-    hint.innerHTML = `▶ Скрытые команды (${hidden.length}). Нажми, чтобы развернуть`;
-    hint.onclick = () => {
-      hint.remove();
+    if (teamsExpanded) {
       hidden.forEach(h => container.appendChild(renderTeamItem(h)));
-    };
-    container.appendChild(hint);
+      const collapseBtn = document.createElement('div');
+      collapseBtn.className = 'group-collapsed-hint';
+      collapseBtn.style.cursor = 'pointer';
+      collapseBtn.innerHTML = `▼ Свернуть скрытые команды`;
+      collapseBtn.onclick = () => { teamsExpanded = false; renderGlobalTeams(); };
+      container.appendChild(collapseBtn);
+    } else {
+      hint.innerHTML = `▶ Скрытые команды (${hidden.length}). Нажми, чтобы развернуть`;
+      hint.onclick = () => { teamsExpanded = true; renderGlobalTeams(); };
+      container.appendChild(hint);
+    }
   }
   
   restoreFocus(focusState, container);
