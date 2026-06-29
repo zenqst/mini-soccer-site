@@ -274,6 +274,15 @@
   .career-trophy .emoji { font-size: 20px; }
   .career-trophy .text { font-size: 12px; }
   .career-trophy.champ { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
+  .career-trophy.silver { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-color: #94a3b8; }
+  .career-trophy.boot { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
+
+  .tm-row { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 4px; flex-wrap: wrap; }
+  .tm-row.my-team { background: var(--highlight); }
+  .tm-row .tm-flag { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; flex-shrink: 0; }
+  .tm-row .tm-flag:hover { background: var(--bg); }
+  .tm-row input[type="text"] { flex: 1; min-width: 120px; }
+  .tm-row .tm-meta { font-size: 11px; color: var(--text-muted); width: 100%; padding-left: 44px; }
 </style>
 </head>
 <body>
@@ -384,7 +393,10 @@
     <div class="settings-section">
       <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
         <span>👥 Команды</span>
-        <button class="btn btn-sm btn-primary" onclick="addGlobalTeam()">+ Команда</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" onclick="openTeamManager()">⚙️ Настроить</button>
+          <button class="btn btn-sm btn-primary" onclick="addGlobalTeam()">+ Команда</button>
+        </div>
       </div>
       <div id="global-teams-list"></div>
     </div>
@@ -426,7 +438,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.5.0</span>
+    <span>Генератор турнирных таблиц v2.6.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -475,10 +487,7 @@
         <span class="field-label">Год сезона</span>
         <input type="text" inputmode="numeric" id="new-season-year" placeholder="2026">
       </div>
-      <label class="checkbox-row" style="margin-top:12px;">
-        <input type="checkbox" id="new-season-copy-teams">
-        Скопировать команды из текущего сезона
-      </label>
+      <div class="modal-hint" style="margin-top:8px;">Команды из текущего сезона будут скопированы (скрыты в списках)</div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeNewSeasonModal()">Отмена</button>
@@ -567,6 +576,20 @@
       </div>
     </div>
     <div class="modal-footer"><button class="btn" onclick="closeDataModal()">Закрыть</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="team-manager-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">👥 Управление командами</div>
+      <button class="modal-close" onclick="closeTeamManager()">×</button>
+    </div>
+    <div class="modal-body" id="team-manager-body" style="max-height:60vh; overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="addGlobalTeam(); renderTeamManager();">+ Команда</button>
+      <button class="btn" onclick="closeTeamManager()">Закрыть</button>
+    </div>
   </div>
 </div>
 
@@ -1186,9 +1209,8 @@ function switchSeason(idx) {
 }
 
 function openNewSeasonModal() {
-  const defaultYear = seasons.length > 0 ? (seasons[seasons.length - 1].year + 1) : new Date().getFullYear();
+  const defaultYear = seasons.length > 0 ? (seasons[seasons.length - 1].year + 1) : 2025;
   document.getElementById('new-season-year').value = defaultYear;
-  document.getElementById('new-season-copy-teams').checked = false;
   document.getElementById('new-season-modal').classList.add('show');
   setTimeout(() => document.getElementById('new-season-year').focus(), 100);
 }
@@ -1201,15 +1223,15 @@ function createNewSeason() {
   const yearStr = document.getElementById('new-season-year').value.trim();
   if (!yearStr) { showToast('Введи год'); return; }
   const year = parseInt(yearStr);
-  if (isNaN(year)) { showToast('Неверный год'); return; }
-  const copyTeams = document.getElementById('new-season-copy-teams').checked;
+  if (isNaN(year) || year < 1900 || year > 2100) { showToast('Год должен быть от 1900 до 2100'); return; }
   
   syncCurrentSeason();
+  const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false }));
   const newSeason = { 
     year, 
     tournamentOrder: [], 
     tournaments: {}, 
-    globalTeams: copyTeams ? JSON.parse(JSON.stringify(globalTeams)) : []
+    globalTeams: copiedTeams
   };
   seasons.push(newSeason);
   currentSeasonIdx = seasons.length - 1;
@@ -2065,6 +2087,56 @@ function closeDataModal() {
   document.getElementById('data-modal').classList.remove('show');
 }
 
+function openTeamManager() {
+  renderTeamManager();
+  document.getElementById('team-manager-modal').classList.add('show');
+}
+
+function closeTeamManager() {
+  document.getElementById('team-manager-modal').classList.remove('show');
+}
+
+function renderTeamManager() {
+  const body = document.getElementById('team-manager-body');
+  if (!body) return;
+
+  const sorted = [...globalTeams].map((t, i) => ({ t, i })).sort((a, b) => {
+    if (a.t.isMe && !b.t.isMe) return -1;
+    if (!a.t.isMe && b.t.isMe) return 1;
+    return a.t.name.localeCompare(b.t.name, 'ru');
+  });
+
+  body.innerHTML = sorted.map(({ t, i }) => {
+    const usedIn = [];
+    tournamentOrder.forEach(k => {
+      const tour = tournaments[k];
+      if (tour.teams.some(te => te.teamId === t.id)) {
+        usedIn.push(`${tour.emoji} ${tour.name}`);
+      }
+    });
+    const seasonYears = seasons.filter(s => (s.globalTeams || []).some(gt => gt.id === t.id)).map(s => s.year);
+    const metaParts = [];
+    if (usedIn.length > 0) metaParts.push(`Турниры: ${usedIn.join(', ')}`);
+    if (seasonYears.length > 0) metaParts.push(`Сезоны: ${formatSeasonRange(seasonYears)}`);
+
+    return `<div class="tm-row${t.isMe ? ' my-team' : ''}">
+      <button class="tm-flag" onclick="openFlagForGlobalTeam(${i}); renderTeamManager();" title="Выбрать флаг">${t.flag || '🏳️'}</button>
+      <input type="text" value="${escapeHtml(t.name)}" placeholder="Название" onchange="globalTeams[${i}].name=this.value; renderGlobalTeams(); renderTeamManager(); debouncedSave();">
+      <label class="checkbox-row"><input type="checkbox" ${t.isMe ? 'checked' : ''} onchange="globalTeams[${i}].isMe=this.checked; renderGlobalTeams(); renderTeamManager(); debouncedSave();"> Моя</label>
+      <button class="icon-btn" onclick="toggleTeamVisible(${i}); renderTeamManager();" title="${t.visible !== false ? 'Скрыть' : 'Показать'}" style="font-size:16px;${t.visible === false ? 'opacity:0.3;' : ''}">👁️</button>
+      <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${i}); renderTeamManager();">✕</button>
+      ${metaParts.length > 0 ? `<div class="tm-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function formatSeasonRange(years) {
+  if (!years || years.length === 0) return '';
+  const sorted = [...years].sort((a, b) => a - b);
+  if (sorted.length === 1) return String(sorted[0]);
+  return `${sorted[0]}–${sorted[sorted.length - 1]}`;
+}
+
 function switchDataTab(tab) {
   document.querySelectorAll('.data-modal-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.data-modal-panel').forEach(p => p.classList.remove('active'));
@@ -2841,6 +2913,11 @@ function renderCareer() {
         if (isChamp) {
           sChampionships++;
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
+        } else if (rank === 2) {
+          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
+        }
+        if (t.topScorer === 1) {
+          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
         }
       }
     });
@@ -2897,10 +2974,15 @@ function renderCareer() {
   }
 
   if (trophies.length > 0) {
+    const sorted = trophies.sort((a, b) => b.season - a.season);
     html += `<div class="career-section">
-      <div class="career-section-title">🏆 Витрина трофеев</div>
+      <div class="career-section-title">🏆 Достижения</div>
       <div style="display:flex; flex-wrap:wrap; gap:4px;">
-        ${trophies.map(t => `<div class="career-trophy${t.type === 'champ' ? ' champ' : ''}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} (${t.season})</span></div>`).join('')}
+        ${sorted.map(t => {
+          const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : '';
+          const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : '';
+          return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
+        }).join('')}
       </div>
     </div>`;
   }
@@ -2989,6 +3071,7 @@ document.getElementById('data-modal').addEventListener('click', (e) => { if (e.t
 document.getElementById('new-season-modal').addEventListener('click', (e) => { if (e.target.id === 'new-season-modal') closeNewSeasonModal(); });
 document.getElementById('flag-modal').addEventListener('click', (e) => { if (e.target.id === 'flag-modal') closeFlagModal(); });
 document.getElementById('presets-modal').addEventListener('click', (e) => { if (e.target.id === 'presets-modal') closePresetsModal(); });
+document.getElementById('team-manager-modal').addEventListener('click', (e) => { if (e.target.id === 'team-manager-modal') closeTeamManager(); });
 window.addEventListener('beforeunload', saveToLocalStorage);
 </script>
 </body>
