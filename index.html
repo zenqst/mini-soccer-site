@@ -587,10 +587,14 @@ function loadFromCookies() {
 }
 
 // ============ ФЛАГИ СТРАН ============
+const _tag = (s) => String.fromCodePoint(...[...s].map(c => 0xE0000 + c.charCodeAt(0)));
+const FLAG_ENGLAND = '🏴' + _tag('gbeng') + String.fromCodePoint(0xE007F);
+const FLAG_SCOTLAND = '🏴' + _tag('gbsct') + String.fromCodePoint(0xE007F);
+const FLAG_WALES = '🏴' + _tag('gbwls') + String.fromCodePoint(0xE007F);
 const FLAGS = [
   // Европа
-  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:'🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}', n:'Англия'}, {f:'🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}', n:'Шотландия'},
-  {f:'🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E006E}\u{E007F}', n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:FLAG_ENGLAND, n:'Англия'}, {f:FLAG_SCOTLAND, n:'Шотландия'},
+  {f:FLAG_WALES, n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
   {f:'🇮🇹', n:'Италия'}, {f:'🇵🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇧🇪', n:'Бельгия'},
   {f:'🇦🇹', n:'Австрия'}, {f:'🇨🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
   {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
@@ -780,9 +784,9 @@ function initDefaults() {
     { id: 'rb_leipzi', name: 'RB Leipzi', isMe: false, flag: '🇩🇪' },
     { id: 'veronaa', name: 'Veronaa', isMe: false, flag: '🇮🇹' },
     { id: 'fk_soch', name: 'FK Soch', isMe: false, flag: '🇷🇺' },
-    { id: 'westhan', name: 'WestHan', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}' },
+    { id: 'westhan', name: 'WestHan', isMe: false, flag: FLAG_ENGLAND },
     { id: 'roma', name: 'Roma', isMe: false, flag: '🇮🇹' },
-    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}' },
+    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: FLAG_ENGLAND },
     { id: 'monacco', name: 'Monacco', isMe: false, flag: '🇲🇨' },
     { id: 'allmeria', name: 'Allmeria', isMe: false, flag: '🇪🇸' },
     { id: 'vallencia', name: 'Vallencia', isMe: false, flag: '🇪🇸' },
@@ -792,7 +796,7 @@ function initDefaults() {
     { id: 'rus', name: 'RUS', isMe: true, flag: '🇷🇺' },
     { id: 'cro', name: 'CRO', isMe: false, flag: '🇭🇷' },
     { id: 'pol', name: 'POL', isMe: false, flag: '🇵🇱' },
-    { id: 'sco', name: 'SCO', isMe: false, flag: '🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}' },
+    { id: 'sco', name: 'SCO', isMe: false, flag: FLAG_SCOTLAND },
     { id: 'cze', name: 'CZE', isMe: false, flag: '🇨🇿' },
     { id: 'rom', name: 'ROM', isMe: false, flag: '🇷🇴' }
   ];
@@ -1028,45 +1032,24 @@ function debouncedSave() {
 
 function migrateFlags(data) {
   if (!data || !data.seasons) return data;
-  const flagMap = {
-    '🇹': '🇵🇹', '🇪🇸': '🇪🇸', '🇬🇧': '🇬🇧',
-    '🇭🇷': '🇭🇷', '🇷🇸': '🇷🇸', '🇷🇺': '🇷🇺', '🇺🇦': '🇺🇦',
-    '🇷🇴': '🇷🇴', '🇬🇷': '🇬🇷', '🇹🇷': '🇹🇷', '🇸🇪': '🇸🇪',
-    '🇩🇰': '🇩🇰', '🇳🇴': '🇳🇴', '🇫🇮': '🇫🇮', '🇭🇺': '🇭🇺',
-    '🇧🇬': '🇧🇬', '🇸🇰': '🇸🇰', '🇸🇮': '🇸🇮', '🇦🇱': '🇦🇱',
-    '🇲🇰': '🇲🇰', '🇲🇩': '🇲🇩', '🇧🇾': '🇧🇾', '🇱🇹': '🇱🇹',
-    '🇱🇻': '🇱🇻', '🇪🇪': '🇪🇪', '🇮🇸': '🇮🇸', '🇱🇺': '🇱🇺',
-    '🇲🇹': '🇲🇹', '🇨🇾': '🇨🇾', '🇦🇹': '🇦🇹', '🇵🇱': '🇵🇱',
-    '🇨🇿': '🇨🇿', '🇮🇹': '🇮🇹', '🇫🇷': '🇫🇷', '🇩🇪': '🇩🇪',
-    '🇧🇷': '🇧🇷', '🇦🇷': '🇦🇷', '🇺🇾': '🇺🇾', '🇨🇱': '🇨🇱',
-    '🇨🇴': '🇨🇴', '🇵🇪': '🇵🇪', '🇪🇨': '🇪🇨', '🇵🇾': '🇵🇾',
-    '🇻🇪': '🇻🇪', '🇧🇴': '🇧🇴', '🇲🇽': '🇲🇽', '🇺🇸': '🇺🇸',
-    '🇨🇦': '🇨🇦', '🇨🇷': '🇨🇷', '🇵🇦': '🇵🇦', '🇯🇲': '🇯🇲',
-    '🇭🇳': '🇭🇳', '🇬🇹': '🇬🇹', '🇨🇺': '🇨🇺', '🇩🇴': '🇩🇴',
-    '🇭🇹': '🇭🇹', '🇹🇹': '🇹🇹', '🇯🇵': '🇯🇵', '🇰🇷': '🇰🇷',
-    '🇨🇳': '🇨🇳', '🇮🇳': '🇮🇳', '🇸🇦': '🇸🇦', '🇦🇪': '🇦🇪',
-    '🇶🇦': '🇶🇦', '🇮🇷': '🇮🇷', '🇮🇶': '🇮🇶', '🇸🇾': '🇸🇾',
-    '🇱🇧': '🇱🇧', '🇮🇱': '🇮🇱', '🇹🇭': '🇹🇭', '🇻🇳': '🇻🇳',
-    '🇮🇩': '🇮🇩', '🇵🇭': '🇵🇭', '🇰🇿': '🇰🇿', '🇺🇿': '🇺🇿',
-    '🇪🇬': '🇪🇬', '🇲🇦': '🇲🇦', '🇩🇿': '🇩🇿', '🇹🇳': '🇹🇳',
-    '🇳🇬': '🇳🇬', '🇨🇲': '🇨🇲', '🇬🇭': '🇬🇭', '🇸🇳': '🇸🇳',
-    '🇨🇮': '🇨🇮', '🇿🇦': '🇿🇦', '🇰🇪': '🇰🇪', '🇦🇺': '🇦🇺',
-    '🇳🇿': '🇳🇿', '🇲🇨': '🇲🇨', '🇲🇪': '🇲🇪'
-  };
   const teamFlagByName = {
     'Real Betiz': '🇪🇸', 'Bacelona': '🇪🇸', 'R-Madrid': '🇪🇸',
     'Atlet Madrid': '🇪🇸', 'Vilarreal': '🇪🇸', 'Sevila': '🇪🇸',
     'RB Leipzi': '🇩🇪', 'Veronaa': '🇮🇹', 'FK Soch': '🇷🇺',
-    'WestHan': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Roma': '🇮🇹', 'Arsnal': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    'WestHan': FLAG_ENGLAND, 'Roma': '🇮🇹', 'Arsnal': FLAG_ENGLAND,
     'Monacco': '🇲🇨', 'Allmeria': '🇪🇸', 'Vallencia': '🇪🇸',
-    'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸'
+    'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸',
+    'RUS': '🇷🇺', 'CRO': '🇭🇷', 'POL': '🇵🇱', 'SCO': FLAG_SCOTLAND,
+    'CZE': '🇨🇿', 'ROM': '🇷🇴'
   };
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
       if (!t.flag || t.flag === '') return;
-      if (isFlagBroken(t.flag)) {
-        t.flag = teamFlagByName[t.name] || '🏳️';
+      if (teamFlagByName[t.name]) {
+        t.flag = teamFlagByName[t.name];
+      } else if (isFlagBroken(t.flag)) {
+        t.flag = '🏳️';
       }
     });
     Object.values(s.tournaments || {}).forEach(t => {
