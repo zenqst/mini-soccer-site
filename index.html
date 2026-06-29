@@ -115,10 +115,7 @@
     <div class="settings-section">
       <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
         <span>👥 Команды</span>
-        <div style="display:flex; gap:6px;">
-          <button class="btn btn-sm" onclick="openTeamManager()">⚙️ Настроить</button>
-          <button class="btn btn-sm btn-primary" onclick="addGlobalTeam()">+ Команда</button>
-        </div>
+        <button class="btn btn-sm" onclick="openTeamManager()" style="margin:0 auto;">⚙️ Настроить</button>
       </div>
       <div id="global-teams-list"></div>
     </div>
@@ -160,7 +157,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.7.0</span>
+    <span>Генератор турнирных таблиц v2.8.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -317,7 +314,11 @@
 
 <div class="toast" id="toast">Скопировано</div>
 
-<script src="app.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/rendering.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/init.js"></script>
 </body>
 </html>
 
