@@ -61,7 +61,6 @@ function renderPanels() {
         <div class="card-header">
           <div class="card-title-wrap">
             <div class="card-title">${escapeHtml(t.emoji)} ${escapeHtml(t.name)}</div>
-            <button class="icon-btn" onclick="openTournamentModal('${key}')" title="Настройки турнира">⚙️</button>
             ${t.hasPlayoff ? `<button class="icon-btn collapse-btn" onclick="toggleGroupCollapse('${key}')" title="Свернуть/развернуть группу" id="collapse-btn-${key}"></button>` : ''}
           </div>
           <button class="btn btn-sm" onclick="addTeamToTournament('${key}')">+ Команда</button>

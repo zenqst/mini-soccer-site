@@ -669,7 +669,8 @@ function renderSeasonsList() {
   const container = document.getElementById('seasons-list');
   if (!container) return;
   container.innerHTML = '';
-  seasons.forEach((s, idx) => {
+  const sorted = seasons.map((s, idx) => ({ s, idx })).sort((a, b) => b.s.year - a.s.year);
+  sorted.forEach(({ s, idx }) => {
     const isCurrent = idx === currentSeasonIdx;
     const tCount = (s.tournamentOrder || []).length;
     const teamCount = (s.globalTeams || []).filter(t => t.visible !== false && t.visible !== 0).length;

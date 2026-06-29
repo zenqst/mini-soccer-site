@@ -399,6 +399,7 @@ function renderCareer() {
 
   const allTeams = new Set();
   const myTeamsMap = {};
+  const myTeamSeenInSeason = {};
   const trophies = [];
   let totalMatches = 0, totalGoals = 0, totalAssists = 0, totalMvp = 0;
   let ratingSum = 0, ratingCount = 0;
@@ -420,11 +421,15 @@ function renderCareer() {
         allTeams.add(te.teamId);
         sTeams.add(te.teamId);
         if (gt.isMe) {
-          const mapKey = gt.name + '|' + gt.flag;
+          const mapKey = gt.id;
           if (!myTeamsMap[mapKey]) {
             myTeamsMap[mapKey] = { name: gt.name, flag: gt.flag, seasons: [] };
+            myTeamSeenInSeason[mapKey] = new Set();
           }
-          if (!myTeamsMap[mapKey].seasons.includes(s.year)) myTeamsMap[mapKey].seasons.push(s.year);
+          if (!myTeamSeenInSeason[mapKey].has(s.year)) {
+            myTeamsMap[mapKey].seasons.push(s.year);
+            myTeamSeenInSeason[mapKey].add(s.year);
+          }
 
           sMatches += te.w + te.d + te.l;
 
