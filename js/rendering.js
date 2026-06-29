@@ -245,7 +245,13 @@ function removeTeam(key, idx) {
 }
 
 function addGlobalTeam() {
-  globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '', visible: true });
+  const team = { id: 'team_' + Date.now(), name: '', isMe: false, flag: '', visible: true };
+  globalTeams.push(team);
+  seasons.forEach((s, idx) => {
+    if (idx !== currentSeasonIdx && !s.globalTeams.find(t => t.id === team.id)) {
+      s.globalTeams.push({ ...team, visible: false });
+    }
+  });
   renderGlobalTeams();
   tournamentOrder.forEach(k => { renderTeams(k); });
   debouncedSave();
@@ -257,10 +263,23 @@ function removeGlobalTeam(idx) {
     tournamentOrder.forEach(key => {
       tournaments[key].teams = tournaments[key].teams.filter(t => t.teamId !== removed.id);
     });
+    seasons.forEach((s, idx) => {
+      if (idx !== currentSeasonIdx) {
+        s.globalTeams = s.globalTeams.filter(t => t.id !== removed.id);
+      }
+    });
   }
   renderGlobalTeams();
   tournamentOrder.forEach(k => renderTeams(k));
   debouncedSave();
+}
+
+function syncTeamAcrossSeasons(teamId, prop, value) {
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    const t = s.globalTeams.find(gt => gt.id === teamId);
+    if (t) t[prop] = value;
+  });
 }
 
 function renderGlobalTeams() {
@@ -294,12 +313,15 @@ function renderGlobalTeams() {
       const eventType = (field === 'isMe') ? 'change' : 'input';
       input.addEventListener(eventType, (e) => {
         const i = parseInt(e.target.dataset.idx);
+        const teamId = globalTeams[i].id;
         if (field === 'name') {
           globalTeams[i].name = e.target.value;
+          syncTeamAcrossSeasons(teamId, 'name', e.target.value);
           tournamentOrder.forEach(k => updateTeamSelects(k));
           debouncedSave();
         } else if (field === 'isMe') {
           globalTeams[i].isMe = e.target.checked;
+          syncTeamAcrossSeasons(teamId, 'isMe', e.target.checked);
           renderGlobalTeams();
           tournamentOrder.forEach(k => renderTeams(k));
           debouncedSave();
@@ -324,6 +346,7 @@ function openFlagForGlobalTeam(idx) {
   const team = globalTeams[idx];
   openFlagModal(team.flag || '', (flag) => {
     team.flag = flag;
+    syncTeamAcrossSeasons(team.id, 'flag', flag);
     renderGlobalTeams();
     tournamentOrder.forEach(k => {
       updateTeamSelects(k);

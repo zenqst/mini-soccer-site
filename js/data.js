@@ -562,7 +562,7 @@ function createNewSeason() {
   if (isNaN(year) || year < 1900 || year > 2100) { showToast('Год должен быть от 1900 до 2100'); return; }
   
   syncCurrentSeason();
-  const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false }));
+  const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false, isMe: false }));
   const newSeason = { 
     year, 
     tournamentOrder: [], 
