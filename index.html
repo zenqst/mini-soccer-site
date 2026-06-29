@@ -274,7 +274,7 @@
   .career-trophy .emoji { font-size: 20px; }
   .career-trophy .text { font-size: 12px; }
   .career-trophy.champ { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
-  .career-trophy.silver { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-color: #94a3b8; }
+  .career-trophy.silver { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%); border-color: #94a3b8; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
   .career-trophy.boot { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-color: #fbbf24; }
 
   .tm-row { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 4px; flex-wrap: wrap; }
@@ -393,12 +393,8 @@
     <div class="settings-section">
       <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
         <span>👥 Команды</span>
-        <div style="display:flex; gap:6px;">
-          <button class="btn btn-sm" onclick="openTeamManager()">⚙️ Настроить</button>
-          <button class="btn btn-sm btn-primary" onclick="addGlobalTeam()">+ Команда</button>
-        </div>
+        <button class="btn btn-sm btn-primary" onclick="openTeamManager()">⚙️ Настроить</button>
       </div>
-      <div id="global-teams-list"></div>
     </div>
     <div class="settings-section">
       <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -438,7 +434,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.6.0</span>
+    <span>Генератор турнирных таблиц v2.6.1</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -2915,9 +2911,14 @@ function renderCareer() {
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
         } else if (rank === 2) {
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
+        } else if (t.hasPlayoff && t.playoffMatches?.length > 0) {
+          const last = t.playoffMatches[t.playoffMatches.length - 1];
+          if (last.round === 'Final' && last.result === 'loss') {
+            trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
+          }
         }
         if (t.topScorer === 1) {
-          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+          trophies.push({ emoji: '🥇', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
         }
       }
     });
