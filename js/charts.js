@@ -458,23 +458,24 @@ function renderCareer() {
       if (myEntry) {
         const rank = t.teams.indexOf(myEntry) + 1;
         const matchesPlayed = t.teams.reduce((sum, te) => sum + te.w + te.d + te.l, 0);
-        if (matchesPlayed === 0) return;
-        const isChamp = (rank === 1 && !t.hasPlayoff) ||
-          (t.hasPlayoff && t.playoffMatches?.length > 0 &&
-           t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
-           t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
-        const isSilver = (rank === 2 && !t.hasPlayoff) ||
-          (t.hasPlayoff && t.playoffMatches?.length > 0 &&
-           t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
-           t.playoffMatches[t.playoffMatches.length - 1]?.result === 'loss');
-        if (isChamp) {
-          sChampionships++;
-          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
-        } else if (isSilver) {
-          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
-        }
-        if (t.topScorer === 1) {
-          trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+        if (matchesPlayed > 0) {
+          const isChamp = (rank === 1 && !t.hasPlayoff) ||
+            (t.hasPlayoff && t.playoffMatches?.length > 0 &&
+             t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
+             t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
+          const isSilver = (rank === 2 && !t.hasPlayoff) ||
+            (t.hasPlayoff && t.playoffMatches?.length > 0 &&
+             t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
+             t.playoffMatches[t.playoffMatches.length - 1]?.result === 'loss');
+          if (isChamp) {
+            sChampionships++;
+            trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
+          } else if (isSilver) {
+            trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
+          }
+          if (t.topScorer === 1) {
+            trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+          }
         }
       }
     });
