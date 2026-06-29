@@ -494,7 +494,7 @@ function renderCareer() {
     seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, rating: avgRating, championships: sChampionships, teams: sTeams.size });
   });
 
-  const myTeams = Object.values(myTeamsMap).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const myTeams = Object.values(myTeamsMap).sort((a, b) => Math.max(...b.seasons.map(Number)) - Math.max(...a.seasons.map(Number)));
   const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
   const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
 
