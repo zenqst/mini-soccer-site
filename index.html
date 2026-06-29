@@ -2229,13 +2229,35 @@ function fullRender() {
 const chartInstances = {};
 let currentFormTournament = null;
 
-const chartDefaults = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: {
-    legend: { labels: { font: { family: '-apple-system, BlinkMacSystemFont, sans-serif', size: 12 }, color: '#1a1a1a', boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } },
-    tooltip: { backgroundColor: '#1a1a1a', titleColor: '#fff', bodyColor: '#fff', padding: 10, cornerRadius: 4, titleFont: { weight: '600' }, displayColors: false }
-  }
-};
+function getChartColors() {
+  const bg = getComputedStyle(document.body).backgroundColor;
+  const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  const luminance = match ? (0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]) / 255 : 0.95;
+  const dark = luminance < 0.4;
+  return {
+    text: dark ? '#e5e5e5' : '#1a1a1a',
+    textMuted: dark ? '#a0a0a0' : '#737373',
+    grid: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
+    tooltipBg: dark ? '#333' : '#1a1a1a',
+    emptyBar: dark ? '#444' : '#e5e5e5'
+  };
+}
+
+function chartOpts(overrides = {}) {
+  const c = getChartColors();
+  const base = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { font: { family: '-apple-system, BlinkMacSystemFont, sans-serif', size: 12 }, color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } },
+      tooltip: { backgroundColor: c.tooltipBg, titleColor: '#fff', bodyColor: '#fff', padding: 10, cornerRadius: 4, titleFont: { weight: '600' }, displayColors: false }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+      y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true }
+    }
+  };
+  return JSON.parse(JSON.stringify({ ...base, ...overrides }));
+}
 
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
@@ -2284,6 +2306,7 @@ function renderSummaryStats() {
 function renderPointsChart() {
   destroyChart('chart-points');
   const ctx = document.getElementById('chart-points').getContext('2d');
+  const c = getChartColors();
   const sorted = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2297,13 +2320,13 @@ function renderPointsChart() {
   });
   sorted.sort((a, b) => b.v - a.v);
   if (sorted.length === 0) {
-    chartInstances['chart-points'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-points'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-points'] = new Chart(ctx, {
     type: 'bar',
     data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 18 }] },
-    options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { x: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } } } }
+    options: chartOpts({ indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } } } })
   });
 }
 
@@ -2332,6 +2355,7 @@ function renderFormSelector() {
 function renderFormChart() {
   destroyChart('chart-form');
   const ctx = document.getElementById('chart-form').getContext('2d');
+  const c = getChartColors();
   const t = tournaments[currentFormTournament];
   if (!t || t.teams.length === 0) return;
   const labels = t.teams.map(tm => { const gt = getTeamById(tm.teamId); return gt ? gt.name : '???'; });
@@ -2342,13 +2366,14 @@ function renderFormChart() {
       { label: 'Ничьи', data: t.teams.map(tm => tm.d), backgroundColor: COLORS.amber, borderRadius: 4, borderSkipped: false },
       { label: 'Поражения', data: t.teams.map(tm => tm.l), backgroundColor: COLORS.red, borderRadius: 4, borderSkipped: false }
     ] },
-    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } }, y: { stacked: true, grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true } } }
+    options: chartOpts({ plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } }, y: { stacked: true, grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true } } })
   });
 }
 
 function renderTopsChart() {
   destroyChart('chart-tops');
   const ctx = document.getElementById('chart-tops').getContext('2d');
+  const c = getChartColors();
   const labels = [], scorerData = [], assistData = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2358,7 +2383,7 @@ function renderTopsChart() {
     assistData.push(t.topAssist);
   });
   if (labels.length === 0) {
-    chartInstances['chart-tops'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-tops'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-tops'] = new Chart(ctx, {
@@ -2367,27 +2392,27 @@ function renderTopsChart() {
       { label: 'Бомбардиры', data: scorerData, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false },
       { label: 'Ассистенты', data: assistData, backgroundColor: COLORS.purple, borderRadius: 4, borderSkipped: false }
     ] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11, weight: '500' } }, border: { display: false } },
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11, weight: '500' } }, border: { display: false } },
         y: { 
           reverse: true, 
-          grid: { color: '#f0f0f0', drawBorder: false }, 
-          ticks: { color: '#737373', font: { size: 11 }, stepSize: 1, callback: v => '#' + v }, 
+          grid: { color: c.grid, drawBorder: false }, 
+          ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1, callback: v => '#' + v }, 
           border: { display: false }, 
           beginAtZero: false,
-          title: { display: true, text: 'Место (меньше = лучше)', color: '#737373', font: { size: 11 } }
+          title: { display: true, text: 'Место (меньше = лучше)', color: c.textMuted, font: { size: 11 } }
         }
       }
-    }
+    })
   });
 }
 
 function renderGoalsAssistsChart() {
   destroyChart('chart-goals-assists');
   const ctx = document.getElementById('chart-goals-assists').getContext('2d');
+  const c = getChartColors();
   const labels = [], goals = [], assists = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2397,7 +2422,7 @@ function renderGoalsAssistsChart() {
     assists.push(t.summary.assists);
   });
   if (labels.length === 0) {
-    chartInstances['chart-goals-assists'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-goals-assists'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-goals-assists'] = new Chart(ctx, {
@@ -2406,20 +2431,20 @@ function renderGoalsAssistsChart() {
       { label: 'Голы', data: goals, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
       { label: 'Ассисты', data: assists, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }
     ] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
-        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
       }
-    }
+    })
   });
 }
 
 function renderDiffChart() {
   destroyChart('chart-diff');
   const ctx = document.getElementById('chart-diff').getContext('2d');
+  const c = getChartColors();
   const sorted = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2433,19 +2458,20 @@ function renderDiffChart() {
   });
   sorted.sort((a, b) => b.v - a.v);
   if (sorted.length === 0) {
-    chartInstances['chart-diff'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-diff'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-diff'] = new Chart(ctx, {
     type: 'bar',
     data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 16 }] },
-    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 10 }, maxRotation: 60, minRotation: 45 }, border: { display: false } }, y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false } } } }
+    options: chartOpts({ plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: c.text, font: { size: 10 }, maxRotation: 60, minRotation: 45 }, border: { display: false } }, y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false } } } })
   });
 }
 
 function renderProgressChart() {
   destroyChart('chart-progress');
   const ctx = document.getElementById('chart-progress').getContext('2d');
+  const c = getChartColors();
   const labels = [], played = [], total = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2458,29 +2484,29 @@ function renderProgressChart() {
     total.push(getTotalPossibleMatches(key));
   });
   if (labels.length === 0) {
-    chartInstances['chart-progress'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-progress'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-progress'] = new Chart(ctx, {
     type: 'bar',
     data: { labels, datasets: [
       { label: 'Сыграно', data: played, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
-      { label: 'Всего', data: total, backgroundColor: '#e5e5e5', borderRadius: 4, borderSkipped: false }
+      { label: 'Всего', data: total, backgroundColor: c.emptyBar, borderRadius: 4, borderSkipped: false }
     ] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
-        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
       }
-    }
+    })
   });
 }
 
 function renderEfficiencyChart() {
   destroyChart('chart-efficiency');
   const ctx = document.getElementById('chart-efficiency').getContext('2d');
+  const c = getChartColors();
   const labels = [], efficiency = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2492,26 +2518,26 @@ function renderEfficiencyChart() {
     efficiency.push(parseFloat(eff));
   });
   if (labels.length === 0) {
-    chartInstances['chart-efficiency'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-efficiency'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-efficiency'] = new Chart(ctx, {
     type: 'bar',
     data: { labels, datasets: [{ label: 'Эффективность %', data: efficiency, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { display: false } },
+    options: chartOpts({ 
+      plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
-        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: 'Процент побед', color: '#737373', font: { size: 11 } } }
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: 'Процент побед', color: c.textMuted, font: { size: 11 } } }
       }
-    }
+    })
   });
 }
 
 function renderRatingChart() {
   destroyChart('chart-rating');
   const ctx = document.getElementById('chart-rating').getContext('2d');
+  const c = getChartColors();
   const labels = [], ratings = [], colors = [];
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2521,26 +2547,26 @@ function renderRatingChart() {
     colors.push(getTournamentColor(key));
   });
   if (labels.length === 0) {
-    chartInstances['chart-rating'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-rating'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: c.emptyBar }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-rating'] = new Chart(ctx, {
     type: 'bar',
     data: { labels, datasets: [{ label: 'Рейтинг', data: ratings, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { display: false } },
+    options: chartOpts({ 
+      plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
-        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 10, title: { display: true, text: 'Рейтинг', color: '#737373', font: { size: 11 } } }
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid, drawBorder: false }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 10, title: { display: true, text: 'Рейтинг', color: c.textMuted, font: { size: 11 } } }
       }
-    }
+    })
   });
 }
 
 function renderAchievementsChart() {
   destroyChart('chart-achievements');
   const ctx = document.getElementById('chart-achievements').getContext('2d');
+  const c = getChartColors();
   const counts = { 'Чемпионство': 0, '2 место': 0, '3-4 место': 0, '5-8 место': 0, '9-16 место': 0, 'Другое': 0 };
   tournamentOrder.forEach(key => {
     const a = getAchievement(key);
@@ -2556,22 +2582,22 @@ function renderAchievementsChart() {
   const data = labels.map(k => counts[k]);
   const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#64748b'];
   if (labels.length === 0) {
-    chartInstances['chart-achievements'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#e5e5e5'] }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-achievements'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: [c.emptyBar] }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-achievements'] = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'right' } }
-    }
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'right', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }
+    })
   });
 }
 
 function renderPieChart() {
   destroyChart('chart-pie');
   const ctx = document.getElementById('chart-pie').getContext('2d');
+  const c = getChartColors();
   let totalWins = 0, totalDraws = 0, totalLosses = 0;
   tournamentOrder.forEach(key => {
     const t = tournaments[key];
@@ -2582,16 +2608,15 @@ function renderPieChart() {
     totalLosses += my.entry.l;
   });
   if (totalWins === 0 && totalDraws === 0 && totalLosses === 0) {
-    chartInstances['chart-pie'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#e5e5e5'] }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    chartInstances['chart-pie'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: [c.emptyBar] }] }, options: chartOpts({ plugins: { legend: { display: false } } }) });
     return;
   }
   chartInstances['chart-pie'] = new Chart(ctx, {
     type: 'doughnut',
     data: { labels: ['Победы', 'Ничьи', 'Поражения'], datasets: [{ data: [totalWins, totalDraws, totalLosses], backgroundColor: [COLORS.green, COLORS.amber, COLORS.red], borderWidth: 0 }] },
-    options: { 
-      ...chartDefaults, 
-      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } }
-    }
+    options: chartOpts({ 
+      plugins: { legend: { display: true, position: 'top', labels: { color: c.text, boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } } }
+    })
   });
 }
 
