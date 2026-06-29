@@ -412,13 +412,13 @@
     <div id="career-content"></div>
   </div>
   
-  <div class="actions">
+  <div class="actions" id="main-actions">
     <button class="btn btn-primary" onclick="generate()">Сгенерировать</button>
     <button class="btn" onclick="copyOutput()">Копировать</button>
     <button class="btn btn-danger" onclick="resetAll()">Сбросить</button>
   </div>
   
-  <div class="output-section">
+  <div class="output-section" id="main-output">
     <div class="output-header">
       <div class="output-title">Результат</div>
     </div>
@@ -426,7 +426,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.4.0</span>
+    <span>Генератор турнирных таблиц v2.4.1</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -1327,6 +1327,9 @@ function switchTab(key) {
   if (btn) btn.classList.add('active');
   const panel = document.getElementById('panel-' + key);
   if (panel) panel.classList.add('active');
+  const isHiddenTab = key === 'career' || key === 'stats';
+  document.getElementById('main-actions').style.display = isHiddenTab ? 'none' : '';
+  document.getElementById('main-output').style.display = isHiddenTab ? 'none' : '';
   if (key === 'stats') setTimeout(renderAllCharts, 50);
   if (key === 'settings') renderSettingsPanel();
   if (key === 'career') renderCareer();
@@ -2722,7 +2725,7 @@ function renderCareer() {
   if (!container) return;
 
   const allTeams = new Set();
-  const myTeams = [];
+  const myTeamsMap = {};
   const trophies = [];
   let totalMatches = 0, totalGoals = 0, totalAssists = 0, totalMvp = 0;
   let ratingSum = 0, ratingCount = 0;
@@ -2744,11 +2747,11 @@ function renderCareer() {
         allTeams.add(te.teamId);
         sTeams.add(te.teamId);
         if (gt.isMe) {
-          if (!myTeams.find(m => m.id === gt.id)) {
-            myTeams.push({ id: gt.id, name: gt.name, flag: gt.flag, seasons: [] });
+          const mapKey = gt.name + '|' + gt.flag;
+          if (!myTeamsMap[mapKey]) {
+            myTeamsMap[mapKey] = { name: gt.name, flag: gt.flag, seasons: [] };
           }
-          const myT = myTeams.find(m => m.id === gt.id);
-          if (myT && !myT.seasons.includes(s.year)) myT.seasons.push(s.year);
+          if (!myTeamsMap[mapKey].seasons.includes(s.year)) myTeamsMap[mapKey].seasons.push(s.year);
 
           sMatches += te.w + te.d + te.l;
 
@@ -2756,11 +2759,11 @@ function renderCareer() {
             if (opp.teamId === te.teamId) return;
             const oppGt = (s.globalTeams || []).find(g => g.id === opp.teamId);
             if (!oppGt) return;
-            const key2 = [gt.name, oppGt.name].sort().join(' vs ');
-            if (!h2h[key2]) h2h[key2] = { team1: gt.name, team1Flag: gt.flag, team2: oppGt.name, team2Flag: oppGt.flag, w: 0, d: 0, l: 0 };
-            h2h[key2].w += te.h2h[0];
-            h2h[key2].d += te.h2h[1];
-            h2h[key2].l += te.h2h[2];
+            const h2hKey = [gt.name, oppGt.name].sort().join(' vs ');
+            if (!h2h[h2hKey]) h2h[h2hKey] = { team1: gt.name, team1Flag: gt.flag, team2: oppGt.name, team2Flag: oppGt.flag, w: 0, d: 0, l: 0 };
+            h2h[h2hKey].w += te.h2h[0];
+            h2h[h2hKey].d += te.h2h[1];
+            h2h[h2hKey].l += te.h2h[2];
           });
         }
       });
@@ -2776,13 +2779,13 @@ function renderCareer() {
       });
       if (myEntry) {
         const rank = t.teams.indexOf(myEntry) + 1;
-        const achievement = rank === 1 && !t.hasPlayoff ? 'Чемпионство' :
-          t.hasPlayoff && t.playoffMatches?.length > 0 && t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' && t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win' ? 'Чемпионство' : '';
-        if (achievement) {
+        const isChamp = (rank === 1 && !t.hasPlayoff) ||
+          (t.hasPlayoff && t.playoffMatches?.length > 0 &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
+           t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
+        if (isChamp) {
           sChampionships++;
           trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
-        } else if (rank <= 3) {
-          trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: `${rank} место` });
         }
       }
     });
@@ -2802,12 +2805,14 @@ function renderCareer() {
     seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, rating: avgRating, championships: sChampionships, teams: sTeams.size });
   });
 
+  const myTeams = Object.values(myTeamsMap).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
-
   const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
 
-  const champTrophies = trophies.filter(t => t.type === 'champ');
-  const otherTrophies = trophies.filter(t => t.type !== 'champ');
+  const formatSeasons = (seasons) => {
+    if (seasons.length <= 2) return seasons.join(' и ');
+    return `${seasons[0]}–${seasons[seasons.length - 1]}`;
+  };
 
   let html = '';
 
@@ -2829,20 +2834,18 @@ function renderCareer() {
           <div class="flag">${team.flag || '🏳️'}</div>
           <div class="info">
             <div class="name">${escapeHtml(team.name)}</div>
-            <div class="meta">Сезоны: ${team.seasons.join(', ')}</div>
+            <div class="meta">Сезоны: ${formatSeasons(team.seasons)}</div>
           </div>
-          <div class="badge">ваша</div>
         </div>
       `).join('')}
     </div>`;
   }
 
-  if (champTrophies.length > 0 || otherTrophies.length > 0) {
+  if (trophies.length > 0) {
     html += `<div class="career-section">
       <div class="career-section-title">🏆 Витрина трофеев</div>
       <div style="display:flex; flex-wrap:wrap; gap:4px;">
-        ${champTrophies.map(t => `<div class="career-trophy champ"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} (${t.season})</span></div>`).join('')}
-        ${otherTrophies.map(t => `<div class="career-trophy"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} — ${t.type} (${t.season})</span></div>`).join('')}
+        ${trophies.map(t => `<div class="career-trophy${t.type === 'champ' ? ' champ' : ''}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)} (${t.season})</span></div>`).join('')}
       </div>
     </div>`;
   }
