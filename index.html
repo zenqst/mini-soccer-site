@@ -1026,6 +1026,65 @@ function debouncedSave() {
   saveTimer = setTimeout(saveToLocalStorage, 800);
 }
 
+function migrateFlags(data) {
+  if (!data || !data.seasons) return data;
+  const flagMap = {
+    '🇹': '🇵🇹', '🇪🇸': '🇪🇸', '🇬🇧': '🇬🇧',
+    '🇭🇷': '🇭🇷', '🇷🇸': '🇷🇸', '🇷🇺': '🇷🇺', '🇺🇦': '🇺🇦',
+    '🇷🇴': '🇷🇴', '🇬🇷': '🇬🇷', '🇹🇷': '🇹🇷', '🇸🇪': '🇸🇪',
+    '🇩🇰': '🇩🇰', '🇳🇴': '🇳🇴', '🇫🇮': '🇫🇮', '🇭🇺': '🇭🇺',
+    '🇧🇬': '🇧🇬', '🇸🇰': '🇸🇰', '🇸🇮': '🇸🇮', '🇦🇱': '🇦🇱',
+    '🇲🇰': '🇲🇰', '🇲🇩': '🇲🇩', '🇧🇾': '🇧🇾', '🇱🇹': '🇱🇹',
+    '🇱🇻': '🇱🇻', '🇪🇪': '🇪🇪', '🇮🇸': '🇮🇸', '🇱🇺': '🇱🇺',
+    '🇲🇹': '🇲🇹', '🇨🇾': '🇨🇾', '🇦🇹': '🇦🇹', '🇵🇱': '🇵🇱',
+    '🇨🇿': '🇨🇿', '🇮🇹': '🇮🇹', '🇫🇷': '🇫🇷', '🇩🇪': '🇩🇪',
+    '🇧🇷': '🇧🇷', '🇦🇷': '🇦🇷', '🇺🇾': '🇺🇾', '🇨🇱': '🇨🇱',
+    '🇨🇴': '🇨🇴', '🇵🇪': '🇵🇪', '🇪🇨': '🇪🇨', '🇵🇾': '🇵🇾',
+    '🇻🇪': '🇻🇪', '🇧🇴': '🇧🇴', '🇲🇽': '🇲🇽', '🇺🇸': '🇺🇸',
+    '🇨🇦': '🇨🇦', '🇨🇷': '🇨🇷', '🇵🇦': '🇵🇦', '🇯🇲': '🇯🇲',
+    '🇭🇳': '🇭🇳', '🇬🇹': '🇬🇹', '🇨🇺': '🇨🇺', '🇩🇴': '🇩🇴',
+    '🇭🇹': '🇭🇹', '🇹🇹': '🇹🇹', '🇯🇵': '🇯🇵', '🇰🇷': '🇰🇷',
+    '🇨🇳': '🇨🇳', '🇮🇳': '🇮🇳', '🇸🇦': '🇸🇦', '🇦🇪': '🇦🇪',
+    '🇶🇦': '🇶🇦', '🇮🇷': '🇮🇷', '🇮🇶': '🇮🇶', '🇸🇾': '🇸🇾',
+    '🇱🇧': '🇱🇧', '🇮🇱': '🇮🇱', '🇹🇭': '🇹🇭', '🇻🇳': '🇻🇳',
+    '🇮🇩': '🇮🇩', '🇵🇭': '🇵🇭', '🇰🇿': '🇰🇿', '🇺🇿': '🇺🇿',
+    '🇪🇬': '🇪🇬', '🇲🇦': '🇲🇦', '🇩🇿': '🇩🇿', '🇹🇳': '🇹🇳',
+    '🇳🇬': '🇳🇬', '🇨🇲': '🇨🇲', '🇬🇭': '🇬🇭', '🇸🇳': '🇸🇳',
+    '🇨🇮': '🇨🇮', '🇿🇦': '🇿🇦', '🇰🇪': '🇰🇪', '🇦🇺': '🇦🇺',
+    '🇳🇿': '🇳🇿', '🇲🇨': '🇲🇨', '🇲🇪': '🇲🇪'
+  };
+  const teamFlagByName = {
+    'Real Betiz': '🇪🇸', 'Bacelona': '🇪🇸', 'R-Madrid': '🇪🇸',
+    'Atlet Madrid': '🇪🇸', 'Vilarreal': '🇪🇸', 'Sevila': '🇪🇸',
+    'RB Leipzi': '🇩🇪', 'Veronaa': '🇮🇹', 'FK Soch': '🇷🇺',
+    'WestHan': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Roma': '🇮🇹', 'Arsnal': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    'Monacco': '🇲🇨', 'Allmeria': '🇪🇸', 'Vallencia': '🇪🇸',
+    'Ibiz Evissa': '🇪🇸', 'Athlet Billbao': '🇪🇸', 'Real Socied': '🇪🇸'
+  };
+  const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
+  data.seasons.forEach(s => {
+    (s.globalTeams || []).forEach(t => {
+      if (!t.flag || t.flag === '') return;
+      if (isFlagBroken(t.flag)) {
+        t.flag = teamFlagByName[t.name] || '🏳️';
+      }
+    });
+    Object.values(s.tournaments || {}).forEach(t => {
+      if (t.emoji && isFlagBroken(t.emoji)) {
+        const nameLower = (t.name || '').toLowerCase();
+        if (nameLower.includes('serie') || nameLower.includes('серия')) t.emoji = '🇮🇹';
+        else if (nameLower.includes('рпл') || nameLower.includes('рпл')) t.emoji = '🇷🇺';
+        else if (nameLower.includes('лига чемпионов')) t.emoji = '🏆';
+        else if (nameLower.includes('лига европы')) t.emoji = '🏆';
+        else if (nameLower.includes('европ')) t.emoji = '🇪🇺';
+        else if (nameLower.includes('кубок')) t.emoji = '🏆';
+        else t.emoji = '🏆';
+      }
+    });
+  });
+  return data;
+}
+
 function loadFromLocalStorage() {
   try {
     for (const vKey of ['tournamentApp_v3', 'tournamentApp_v2']) {
@@ -1054,7 +1113,9 @@ function loadFromLocalStorage() {
       }
     }
     if (!raw) return false;
-    const data = JSON.parse(raw);
+    let data = JSON.parse(raw);
+    data = migrateFlags(data);
+    try { localStorage.setItem('tournamentApp_v4', JSON.stringify(data)); } catch(e) {}
     if (!data.seasons || data.seasons.length === 0) return false;
     seasons = data.seasons;
     currentSeasonIdx = data.currentSeasonIdx ?? 0;
