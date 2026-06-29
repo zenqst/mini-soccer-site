@@ -401,7 +401,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.1.1</span>
+    <span>Генератор турнирных таблиц v2.1.2</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -1401,6 +1401,8 @@ function renderTeams(key) {
         const ptsEl = row.querySelector('.points-display');
         if (ptsEl) ptsEl.textContent = calcPoints(key, entry.w, entry.d);
         
+        renderPlayoff(key);
+        renderSummary(key);
         debouncedSave();
       });
     });
@@ -1429,7 +1431,7 @@ function removeTeam(key, idx) {
 function addGlobalTeam() {
   globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '' });
   renderGlobalTeams();
-  tournamentOrder.forEach(k => updateTeamSelects(k));
+  tournamentOrder.forEach(k => { renderTeams(k); });
   debouncedSave();
 }
 
@@ -1712,18 +1714,14 @@ function renderSummary(key) {
   const container = document.getElementById('summary-' + key);
   if (!container) return;
   
-  const focusState = saveFocusState();
+  const finished = isTournamentFinished(key);
   
-  const my = getMyTeamInTournament(key);
-  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
-  const hasAnyData = groupMatches > 0 || t.playoffMatches.length > 0;
-  
-  if (!hasAnyData) {
+  if (!finished) {
     container.innerHTML = '';
     return;
   }
   
-  const finished = isTournamentFinished(key);
+  const focusState = saveFocusState();
   const summaryText = finished ? buildSummaryText(key) : '';
   const s = t.summary;
   
