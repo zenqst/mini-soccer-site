@@ -768,11 +768,6 @@ function deleteCurrentTournament() {
   const key = currentModalKey;
   delete tournaments[key];
   tournamentOrder = tournamentOrder.filter(k => k !== key);
-  seasons.forEach((s, idx) => {
-    if (idx === currentSeasonIdx) return;
-    delete s.tournaments[key];
-    s.tournamentOrder = s.tournamentOrder.filter(k => k !== key);
-  });
   closeModal();
   renderTabs();
   renderPanels();
@@ -810,15 +805,6 @@ function addTournament() {
   const key = 'custom_' + Date.now() + '_' + tournamentCounter;
   tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
   tournamentOrder.push(key);
-  seasons.forEach((s, idx) => {
-    if (idx === currentSeasonIdx) return;
-    if (!s.tournaments[key]) {
-      s.tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
-    }
-    if (!s.tournamentOrder.includes(key)) {
-      s.tournamentOrder.push(key);
-    }
-  });
   renderTabs();
   renderPanels();
   renderTopStats(key);

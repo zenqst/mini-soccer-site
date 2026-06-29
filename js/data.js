@@ -147,19 +147,6 @@ function applyPreset(idx) {
   tournaments[key].pointsPerDraw = p.ptsDraw;
   tournaments[key].isInternational = p.international;
   tournamentOrder.push(key);
-  seasons.forEach((s, idx) => {
-    if (idx === currentSeasonIdx) return;
-    if (!s.tournaments[key]) {
-      s.tournaments[key] = emptyTournament(p.emoji, p.name, p.rounds, p.hasPlayoff, p.format);
-      s.tournaments[key].customFormat = {...p.customFormat};
-      s.tournaments[key].pointsPerWin = p.ptsWin;
-      s.tournaments[key].pointsPerDraw = p.ptsDraw;
-      s.tournaments[key].isInternational = p.international;
-    }
-    if (!s.tournamentOrder.includes(key)) {
-      s.tournamentOrder.push(key);
-    }
-  });
   closePresetsModal();
   renderTabs();
   renderPanels();
@@ -213,16 +200,6 @@ function syncTournamentConfig(srcKey, config) {
 }
 
 function syncTournamentOrder() {
-  seasons.forEach((s, idx) => {
-    if (idx === currentSeasonIdx) return;
-    s.tournamentOrder = [...tournamentOrder];
-    tournamentOrder.forEach(key => {
-      if (!s.tournaments[key]) {
-        s.tournaments[key] = emptyTournament(tournaments[key].emoji, tournaments[key].name, tournaments[key].rounds, tournaments[key].hasPlayoff, tournaments[key].playoffFormat);
-        TOURNAMENT_CONFIG_KEYS.forEach(k => { s.tournaments[key][k] = JSON.parse(JSON.stringify(tournaments[key][k])); });
-      }
-    });
-  });
 }
 
 function initDefaults() {
