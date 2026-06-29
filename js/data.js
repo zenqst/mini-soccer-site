@@ -441,6 +441,8 @@ function migrateFlags(data) {
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
+      if (t.visible === undefined) t.visible = true;
+      if (t.visible === 0) t.visible = true;
       if (!t.flag || t.flag === '') return;
       if (teamFlagByName[t.name]) {
         t.flag = teamFlagByName[t.name];
@@ -648,7 +650,7 @@ function renderSeasonsList() {
   seasons.forEach((s, idx) => {
     const isCurrent = idx === currentSeasonIdx;
     const tCount = (s.tournamentOrder || []).length;
-    const teamCount = (s.globalTeams || []).filter(t => t.visible !== false).length;
+    const teamCount = (s.globalTeams || []).filter(t => t.visible !== false && t.visible !== 0).length;
     const item = document.createElement('div');
     item.className = 'season-list-item' + (isCurrent ? ' current' : '');
     item.innerHTML = `
