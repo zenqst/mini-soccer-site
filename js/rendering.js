@@ -714,7 +714,6 @@ function renderSettingsPanel() {
     `;
     list.appendChild(item);
   });
-  renderGlobalTeams();
 }
 
 let tournamentCounter = 0;
