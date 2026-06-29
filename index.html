@@ -1,0 +1,2556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Генератор турнирных таблиц</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e5e5e5;
+    --text: #1a1a1a;
+    --text-muted: #737373;
+    --accent: #1a1a1a;
+    --accent-hover: #404040;
+    --highlight: #fef3c7;
+    --danger: #dc2626;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  
+  .container { max-width: 960px; margin: 0 auto; }
+  
+  header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+  
+  .season-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .season-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    min-width: 140px;
+  }
+  .season-select:focus { border-color: var(--accent); }
+  
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  
+  .tab {
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  
+  .panel { display: none; }
+  .panel.active { display: block; }
+  
+  .card { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+  
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .card-title-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-title { font-size: 15px; font-weight: 600; }
+  
+  .icon-btn { background: none; border: 1px solid var(--border); padding: 4px 8px; cursor: pointer; font-size: 13px; color: var(--text-muted); transition: all 0.15s; font-family: inherit; }
+  .icon-btn:hover { color: var(--text); background: var(--bg); }
+  
+  .team-row { display: grid; gap: 8px; padding: 12px; background: var(--bg); margin-bottom: 8px; align-items: center; transition: background 0.15s; }
+  .team-row.my-team { background: var(--highlight); }
+  .team-row.auto { grid-template-columns: 1fr; gap: 8px; }
+  .team-row .fields { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  
+  @media (min-width: 640px) {
+    .team-row .fields { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  
+  input[type="text"], input[type="number"], select, textarea {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  
+  input[type="number"] { text-align: center; -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  
+  textarea { resize: vertical; min-height: 120px; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 12px; }
+  
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+  .field-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  
+  .btn { padding: 8px 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-danger { color: var(--danger); border-color: var(--danger); background: var(--surface); }
+  .btn-danger:hover { background: #fef2f2; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+  
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  
+  .points-display { font-size: 13px; font-weight: 600; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); min-width: 50px; text-align: center; }
+  
+  .output-section { margin-top: 32px; }
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .output-title { font-size: 15px; font-weight: 600; }
+  
+  .output { background: var(--surface); border: 1px solid var(--border); padding: 20px; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; min-height: 100px; }
+  
+  .empty { color: var(--text-muted); font-style: italic; text-align: center; padding: 20px; }
+  
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+  .checkbox-row input { width: 16px; height: 16px; cursor: pointer; }
+  
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: white; padding: 12px 20px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 300; max-width: 90%; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  
+  .my-team-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; background: var(--accent); color: white; letter-spacing: 0.05em; text-transform: uppercase; }
+  .h2h-hidden { display: none !important; }
+  .my-team-note { font-size: 11px; color: var(--text-muted); font-style: italic; padding: 6px 10px; background: rgba(0,0,0,0.03); grid-column: 1 / -1; }
+  
+  .playoff-section { background: var(--surface); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; }
+  .playoff-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .playoff-title { font-size: 14px; font-weight: 600; }
+  
+  .playoff-match { display: grid; grid-template-columns: 80px 1fr 130px auto auto; gap: 8px; padding: 10px; background: var(--bg); margin-bottom: 6px; align-items: end; }
+  @media (max-width: 720px) { .playoff-match { grid-template-columns: 1fr 1fr; } }
+  .playoff-match select, .playoff-match input { font-size: 13px; padding: 6px 8px; }
+  
+  .playoff-match.scheduled { border-left: 3px solid var(--text-muted); opacity: 0.85; }
+  .playoff-match.win { border-left: 3px solid #10b981; }
+  .playoff-match.loss { border-left: 3px solid var(--danger); }
+  .playoff-match.draw { border-left: 3px solid #f59e0b; }
+  
+  .summary-section { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; padding: 16px; margin-bottom: 16px; }
+  .summary-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  .summary-text { font-size: 13px; line-height: 1.6; color: var(--text); padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); word-break: break-word; }
+  .summary-fields { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-top: 12px; }
+  @media (min-width: 640px) { .summary-fields { grid-template-columns: 1fr 1fr 1fr; } }
+  
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+  .modal-overlay.show { display: flex; }
+  
+  .modal { background: var(--surface); border: 1px solid var(--border); max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .modal.wide { max-width: 720px; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px; }
+  .modal-body .field-group { margin-bottom: 14px; }
+  .modal-body .field-group:last-child { margin-bottom: 0; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  
+  .settings-section { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+  .settings-section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  
+  .tournament-list-item, .team-list-item, .season-list-item { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg); margin-bottom: 6px; flex-wrap: wrap; }
+  .team-list-item.my-team { background: var(--highlight); }
+  .season-list-item.current { background: var(--highlight); border: 1px solid #fde68a; }
+  .team-list-item .name, .tournament-list-item .name, .season-list-item .name { flex: 1; font-size: 14px; font-weight: 500; min-width: 150px; }
+  .team-list-item .meta, .tournament-list-item .meta, .season-list-item .meta { font-size: 11px; color: var(--text-muted); }
+  
+  .stats-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 768px) { .stats-grid { grid-template-columns: 1fr 1fr; } .stats-grid .full-width { grid-column: 1 / -1; } }
+  
+  .chart-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; }
+  .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; width: 100%; min-height: 260px; }
+  .chart-wrap.tall { min-height: 360px; }
+  
+  .stat-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-box { padding: 14px; background: var(--bg); border: 1px solid var(--border); }
+  .stat-box .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .stat-box .value { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .stat-box .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .stat-box.highlight { background: var(--highlight); border-color: #fde68a; }
+  
+  .tournament-selector { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tournament-selector button { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .tournament-selector button.active { background: var(--accent); color: white; border-color: var(--accent); }
+  
+  .data-modal-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .data-modal-tab { padding: 8px 14px; background: none; border: none; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; }
+  .data-modal-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .data-modal-panel { display: none; }
+  .data-modal-panel.active { display: block; }
+  
+  .group-collapsed-hint { font-size: 12px; color: var(--text-muted); padding: 12px; background: var(--bg); text-align: center; border: 1px dashed var(--border); }
+  .collapse-btn { font-size: 11px; padding: 3px 8px; }
+  
+  /* Флаги */
+  .flag-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .flag-btn:hover { background: var(--bg); transform: scale(1.1); }
+  .flag-btn.selected { border-color: var(--accent); background: var(--highlight); }
+  .flags-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; max-height: 320px; overflow-y: auto; padding: 8px; background: var(--bg); border: 1px solid var(--border); }
+  .flag-preview { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); font-size: 18px; cursor: pointer; }
+  .flag-preview:hover { background: var(--highlight); }
+  .flag-search { margin-bottom: 12px; }
+  
+  /* Пресеты */
+  .presets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .preset-card { padding: 12px; background: var(--bg); border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+  .preset-card:hover { background: var(--highlight); border-color: #fde68a; }
+  .preset-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .preset-meta { font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Генератор турнирных таблиц</h1>
+        <div class="subtitle">Создавай сообщения с результатами турниров</div>
+      </div>
+      <div class="season-bar">
+        <select class="season-select" id="season-selector" onchange="onSeasonChange(this.value)"></select>
+        <button class="btn btn-sm btn-primary" onclick="openNewSeasonModal()">+ Новый сезон</button>
+      </div>
+    </div>
+  </header>
+  
+  <div class="tabs" id="main-tabs"></div>
+  
+  <div id="panels-container"></div>
+  
+  <div class="panel" id="panel-stats">
+    <div class="actions" style="margin-bottom: 16px;">
+      <button class="btn btn-primary" onclick="renderAllCharts()">Обновить графики</button>
+    </div>
+    <div id="stats-summary" class="stat-summary"></div>
+    <div class="stats-grid">
+      <div class="chart-card full-width">
+        <div class="chart-title">🏆 Очки по турнирам</div>
+        <div class="chart-subtitle">Сравнение очков всех команд во всех турнирах</div>
+        <div class="chart-wrap tall"><canvas id="chart-points"></canvas></div>
+      </div>
+      <div class="chart-card full-width">
+        <div class="chart-title"> Форма команд</div>
+        <div class="chart-subtitle">Распределение побед, ничьих и поражений</div>
+        <div class="tournament-selector" id="form-selector"></div>
+        <div class="chart-wrap tall"><canvas id="chart-form"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">⭐ Мои позиции в топах</div>
+        <div class="chart-subtitle">Бомбардиры и ассистенты по турнирам</div>
+        <div class="chart-wrap"><canvas id="chart-tops"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"> Голы и ассисты</div>
+        <div class="chart-subtitle">Вклад по турнирам</div>
+        <div class="chart-wrap"><canvas id="chart-goals-assists"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📊 Разница побед-поражений</div>
+        <div class="chart-subtitle">Победы минус поражения по командам</div>
+        <div class="chart-wrap"><canvas id="chart-diff"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 Прогресс по турнирам</div>
+        <div class="chart-subtitle">Сколько матчей сыграно из общего числа</div>
+        <div class="chart-wrap"><canvas id="chart-progress"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🥇 Эффективность</div>
+        <div class="chart-subtitle">Процент побед моих команд</div>
+        <div class="chart-wrap"><canvas id="chart-efficiency"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">⭐ Рейтинг по турнирам</div>
+        <div class="chart-subtitle">Средняя оценка выступления</div>
+        <div class="chart-wrap"><canvas id="chart-rating"></canvas></div>
+      </div>
+      <div class="chart-card full-width">
+        <div class="chart-title"> Достижения</div>
+        <div class="chart-subtitle">Распределение итоговых мест</div>
+        <div class="chart-wrap tall"><canvas id="chart-achievements"></canvas></div>
+      </div>
+      <div class="chart-card full-width">
+        <div class="chart-title">🥧 Распределение результатов</div>
+        <div class="chart-subtitle">Общая статистика побед, ничьих и поражений</div>
+        <div class="chart-wrap tall"><canvas id="chart-pie"></canvas></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="panel" id="panel-settings">
+    <div class="settings-section">
+      <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>📅 Сезоны</span>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" onclick="duplicateCurrentSeason()"> Дублировать</button>
+          <button class="btn btn-sm btn-primary" onclick="openNewSeasonModal()">+ Новый</button>
+        </div>
+      </div>
+      <div id="seasons-list"></div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>👥 Команды</span>
+        <button class="btn btn-sm btn-primary" onclick="addGlobalTeam()">+ Команда</button>
+      </div>
+      <div id="global-teams-list"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>🏆 Турниры</span>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" onclick="openPresetsModal()">📦 Пресеты</button>
+          <button class="btn btn-sm btn-primary" onclick="addTournament()">+ Пустой</button>
+        </div>
+      </div>
+      <div id="tournament-list"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">💾 Данные</div>
+      <div class="actions" style="margin-top:0;">
+        <button class="btn btn-primary" onclick="openDataModal('export')">📤 Экспорт</button>
+        <button class="btn" onclick="openDataModal('import')">📥 Импорт</button>
+        <button class="btn btn-danger" onclick="resetAll()">Сбросить</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-primary" onclick="generate()">Сгенерировать</button>
+    <button class="btn" onclick="copyOutput()">Копировать</button>
+    <button class="btn btn-danger" onclick="resetAll()">Сбросить</button>
+  </div>
+  
+  <div class="output-section">
+    <div class="output-header">
+      <div class="output-title">Результат</div>
+    </div>
+    <div class="output" id="output"><div class="empty">Нажми «Сгенерировать», чтобы увидеть результат</div></div>
+  </div>
+</div>
+
+<!-- Модалка выбора флага -->
+<div class="modal-overlay" id="flag-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">🏳️ Выбери флаг</div>
+      <button class="modal-close" onclick="closeFlagModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="flag-search" id="flag-search" placeholder="🔍 Поиск по стране..." oninput="filterFlags(this.value)">
+      <div class="flags-grid" id="flags-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="selectFlag('')">Без флага</button>
+      <button class="btn" onclick="closeFlagModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка пресетов турниров -->
+<div class="modal-overlay" id="presets-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">📦 Пресеты турниров</div>
+      <button class="modal-close" onclick="closePresetsModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-hint" style="margin-bottom:12px;">Выбери готовый шаблон турнира — он добавится с настроенными параметрами.</div>
+      <div class="presets-grid" id="presets-grid"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closePresetsModal()">Закрыть</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="new-season-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 Создать новый сезон</div>
+      <button class="modal-close" onclick="closeNewSeasonModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <span class="field-label">Год сезона</span>
+        <input type="text" inputmode="numeric" id="new-season-year" placeholder="2026">
+      </div>
+      <label class="checkbox-row" style="margin-top:12px;">
+        <input type="checkbox" id="new-season-copy-teams">
+        Скопировать команды из текущего сезона
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeNewSeasonModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="createNewSeason()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="tournament-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Настройки турнира</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group"><span class="field-label">Эмодзи</span><input type="text" id="modal-emoji" maxlength="4"></div>
+      <div class="field-group"><span class="field-label">Название турнира</span><input type="text" id="modal-name"></div>
+      <div class="field-group">
+        <span class="field-label">Количество матчей в группе</span>
+        <input type="text" inputmode="numeric" id="modal-rounds" placeholder="0">
+      </div>
+      <div class="field-group">
+        <span class="field-label">Ограничение вывода (топ N команд)</span>
+        <input type="text" inputmode="numeric" id="modal-limit" placeholder="0 = все">
+      </div>
+      <div class="field-group"><span class="field-label">Очки за победу</span><input type="text" inputmode="numeric" id="modal-pts-win" placeholder="3"></div>
+      <div class="field-group"><span class="field-label">Очки за ничью</span><input type="text" inputmode="numeric" id="modal-pts-draw" placeholder="1"></div>
+      <div class="field-group"><label class="checkbox-row"><input type="checkbox" id="modal-show-h2h">Показывать H2H в выводе</label></div>
+      <div class="field-group"><label class="checkbox-row"><input type="checkbox" id="modal-international"> Международный турнир (выводить флаги)</label></div>
+      <div class="field-group"><label class="checkbox-row"><input type="checkbox" id="modal-has-playoff">Есть плей-офф</label></div>
+      <div id="playoff-format-section" style="display:none; margin-top:12px;">
+        <div class="field-group">
+          <span class="field-label">Формат плей-офф</span>
+          <select id="modal-playoff-format">
+            <option value="single">Одноматчевый</option>
+            <option value="double">Двухматчевый (финал 1)</option>
+            <option value="custom">Кастомный</option>
+          </select>
+        </div>
+        <div id="custom-format-fields" style="display:none; margin-top:12px;">
+          <div class="field-group"><span class="field-label">1/8 финала</span><input type="text" inputmode="numeric" id="custom-1/8" value="2"></div>
+          <div class="field-group"><span class="field-label">1/4 финала</span><input type="text" inputmode="numeric" id="custom-1/4" value="2"></div>
+          <div class="field-group"><span class="field-label">1/2 финала</span><input type="text" inputmode="numeric" id="custom-1/2" value="2"></div>
+          <div class="field-group"><span class="field-label">Финал</span><input type="text" inputmode="numeric" id="custom-Final" value="1" disabled></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="deleteCurrentTournament()">Удалить</button>
+      <button class="btn btn-primary" onclick="saveTournamentSettings()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="data-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💾 Управление данными</div>
+      <button class="modal-close" onclick="closeDataModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="data-modal-tabs">
+        <button class="data-modal-tab active" data-panel="export" onclick="switchDataTab('export')">📤 Экспорт</button>
+        <button class="data-modal-tab" data-panel="import" onclick="switchDataTab('import')">📥 Импорт</button>
+      </div>
+      <div class="data-modal-panel active" id="data-panel-export">
+        <div class="field-group">
+          <span class="field-label">JSON-данные</span>
+          <textarea id="export-textarea" readonly style="min-height:200px;"></textarea>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="copyExportData()">📋 Скопировать</button>
+          <button class="btn" onclick="downloadExportFile()">💾 Скачать</button>
+        </div>
+      </div>
+      <div class="data-modal-panel" id="data-panel-import">
+        <div class="field-group">
+          <span class="field-label">Вставь JSON-данные</span>
+          <textarea id="import-textarea" placeholder='Вставь сюда JSON...' style="min-height:200px;"></textarea>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="importFromText()">✅ Импортировать</button>
+          <button class="btn" onclick="document.getElementById('import-file').click()"> Файл</button>
+          <input type="file" id="import-file" accept=".json,.txt" style="display:none" onchange="importFromFile(event)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeDataModal()">Закрыть</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Скопировано</div>
+
+<script>
+// ============ УТИЛИТЫ ============
+function parseNum(val, def = 0) {
+  if (val === '' || val === null || val === undefined) return def;
+  const str = String(val).replace(',', '.').trim();
+  const n = parseFloat(str);
+  return isNaN(n) ? def : n;
+}
+
+function parseIntSafe(val, def = 0) {
+  if (val === '' || val === null || val === undefined) return def;
+  const n = parseInt(String(val).replace(/[^0-9-]/g, ''), 10);
+  return isNaN(n) ? def : n;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// ============ ФЛАГИ СТРАН ============
+const FLAGS = [
+  // Европа
+  {f:'🇪🇸', n:'Испания'}, {f:'🇬🇧', n:'Великобритания'}, {f:'🏴󠁧󠁥󠁮󠁧󠁿', n:'Англия'}, {f:'🏴󠁢󠁳󠁴󠁿', n:'Шотландия'},
+  {f:'🏴󠁧󠁢󠁷󠁬󠁿', n:'Уэльс'}, {f:'🇮🇪', n:'Ирландия'}, {f:'🇫🇷', n:'Франция'}, {f:'🇩🇪', n:'Германия'},
+  {f:'🇮🇹', n:'Италия'}, {f:'🇹', n:'Португалия'}, {f:'🇳🇱', n:'Нидерланды'}, {f:'🇪', n:'Бельгия'},
+  {f:'🇦🇹', n:'Австрия'}, {f:'🇭', n:'Швейцария'}, {f:'🇵🇱', n:'Польша'}, {f:'🇨🇿', n:'Чехия'},
+  {f:'🇭🇷', n:'Хорватия'}, {f:'🇷🇸', n:'Сербия'}, {f:'🇷🇺', n:'Россия'}, {f:'🇺🇦', n:'Украина'},
+  {f:'🇷🇴', n:'Румыния'}, {f:'🇬🇷', n:'Греция'}, {f:'🇹🇷', n:'Турция'}, {f:'🇪', n:'Швеция'},
+  {f:'🇩🇰', n:'Дания'}, {f:'🇳🇴', n:'Норвегия'}, {f:'🇫🇮', n:'Финляндия'}, {f:'🇭🇺', n:'Венгрия'},
+  {f:'🇧🇬', n:'Болгария'}, {f:'🇰', n:'Словакия'}, {f:'🇸🇮', n:'Словения'}, {f:'🇦🇱', n:'Албания'},
+  {f:'🇲🇰', n:'С. Македония'}, {f:'🇲🇩', n:'Молдова'}, {f:'🇧🇾', n:'Беларусь'}, {f:'🇱🇹', n:'Литва'},
+  {f:'🇱🇻', n:'Латвия'}, {f:'🇪', n:'Эстония'}, {f:'🇮🇸', n:'Исландия'}, {f:'🇱🇺', n:'Люксембург'},
+  {f:'🇲🇹', n:'Мальта'}, {f:'🇾', n:'Кипр'}, {f:'🇦🇩', n:'Андорра'}, {f:'🇲🇨', n:'Монако'},
+  {f:'🇱🇮', n:'Лихтенштейн'}, {f:'🇸🇲', n:'Сан-Марино'}, {f:'🇻🇦', n:'Ватикан'},
+  // Америка
+  {f:'🇧🇷', n:'Бразилия'}, {f:'🇷', n:'Аргентина'}, {f:'🇺🇾', n:'Уругвай'}, {f:'🇨', n:'Чили'},
+  {f:'🇨🇴', n:'Колумбия'}, {f:'🇵🇪', n:'Перу'}, {f:'🇪', n:'Эквадор'}, {f:'🇵🇾', n:'Парагвай'},
+  {f:'🇻🇪', n:'Венесуэла'}, {f:'🇧🇴', n:'Боливия'}, {f:'🇽', n:'Мексика'}, {f:'🇺🇸', n:'США'},
+  {f:'🇨🇦', n:'Канада'}, {f:'🇨🇷', n:'Коста-Рика'}, {f:'🇵🇦', n:'Панама'}, {f:'🇯🇲', n:'Ямайка'},
+  {f:'🇭🇳', n:'Гондурас'}, {f:'🇬🇹', n:'Гватемала'}, {f:'🇨🇺', n:'Куба'}, {f:'🇩🇴', n:'Доминикана'},
+  {f:'🇭🇹', n:'Гаити'}, {f:'🇹🇹', n:'Тринидад и Тобаго'},
+  // Азия
+  {f:'🇯', n:'Япония'}, {f:'🇷', n:'Южная Корея'}, {f:'🇨🇳', n:'Китай'}, {f:'🇮🇳', n:'Индия'},
+  {f:'🇸🇦', n:'Саудовская Аравия'}, {f:'🇪', n:'ОАЭ'}, {f:'🇶🇦', n:'Катар'}, {f:'🇮🇷', n:'Иран'},
+  {f:'🇮🇶', n:'Ирак'}, {f:'🇸🇾', n:'Сирия'}, {f:'🇱🇧', n:'Ливан'}, {f:'🇱', n:'Израиль'},
+  {f:'🇹🇭', n:'Таиланд'}, {f:'🇻🇳', n:'Вьетнам'}, {f:'🇮🇩', n:'Индонезия'}, {f:'🇲🇾', n:'Малайзия'},
+  {f:'🇵🇭', n:'Филиппины'}, {f:'🇿', n:'Казахстан'}, {f:'🇺🇿', n:'Узбекистан'}, {f:'🇦', n:'Афганистан'},
+  {f:'🇵🇰', n:'Пакистан'}, {f:'🇧', n:'Бангладеш'}, {f:'🇱🇰', n:'Шри-Ланка'}, {f:'🇲🇲', n:'Мьянма'},
+  {f:'🇰🇬', n:'Кыргызстан'}, {f:'🇹🇯', n:'Таджикистан'}, {f:'🇹🇲', n:'Туркменистан'}, {f:'🇲🇳', n:'Монголия'},
+  // Африка
+  {f:'🇬', n:'Египет'}, {f:'🇲🇦', n:'Марокко'}, {f:'🇩', n:'Алжир'}, {f:'🇹🇳', n:'Тунис'},
+  {f:'🇳', n:'Нигерия'}, {f:'🇨🇲', n:'Камерун'}, {f:'🇬🇭', n:'Гана'}, {f:'🇸🇳', n:'Сенегал'},
+  {f:'🇨🇮', n:'Кот-д\'Ивуар'}, {f:'🇿🇦', n:'ЮАР'}, {f:'🇰🇪', n:'Кения'}, {f:'🇪🇹', n:'Эфиопия'},
+  {f:'🇱🇾', n:'Ливия'}, {f:'🇩', n:'Судан'}, {f:'🇸🇴', n:'Сомали'}, {f:'🇺🇬', n:'Уганда'},
+  {f:'🇹🇿', n:'Танзания'}, {f:'🇲🇿', n:'Мозамбик'}, {f:'🇦🇴', n:'Ангола'}, {f:'🇿🇲', n:'Замбия'},
+  {f:'🇿🇼', n:'Зимбабве'}, {f:'🇧🇼', n:'Ботсвана'}, {f:'🇳🇦', n:'Намибия'},
+  // Океания
+  {f:'🇦🇺', n:'Австралия'}, {f:'🇳🇿', n:'Новая Зеландия'}, {f:'🇫🇯', n:'Фиджи'}, {f:'🇬', n:'Папуа-Новая Гвинея'},
+  // Прочее
+  {f:'🏴', n:'Чёрный флаг'}, {f:'🏳️', n:'Белый флаг'}, {f:'🏁', n:'Клетчатый'}, {f:'🚩', n:'Красный вымпел'}
+];
+
+let flagModalCallback = null;
+let currentFlagFilter = '';
+
+function openFlagModal(currentFlag, callback) {
+  flagModalCallback = callback;
+  currentFlagFilter = '';
+  document.getElementById('flag-search').value = '';
+  renderFlagsGrid('');
+  document.getElementById('flag-modal').classList.add('show');
+  setTimeout(() => document.getElementById('flag-search').focus(), 100);
+}
+
+function closeFlagModal() {
+  document.getElementById('flag-modal').classList.remove('show');
+  flagModalCallback = null;
+}
+
+function filterFlags(val) {
+  currentFlagFilter = val.toLowerCase();
+  renderFlagsGrid(currentFlagFilter);
+}
+
+function renderFlagsGrid(filter) {
+  const grid = document.getElementById('flags-grid');
+  const filtered = filter 
+    ? FLAGS.filter(f => f.n.toLowerCase().includes(filter) || f.f.includes(filter))
+    : FLAGS;
+  grid.innerHTML = filtered.map(f => 
+    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag('${f.f}')">${f.f}</button>`
+  ).join('');
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">Ничего не найдено</div>';
+  }
+}
+
+function pickFlag(flag) {
+  if (flagModalCallback) flagModalCallback(flag);
+  closeFlagModal();
+}
+
+function selectFlag(flag) {
+  if (flagModalCallback) flagModalCallback(flag);
+  closeFlagModal();
+}
+
+// ============ ПРЕСЕТЫ ТУРНИРОВ ============
+const TOURNAMENT_PRESETS = [
+  { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏴󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇺', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '', name: 'Кубок страны', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌟', name: 'Клубный ЧМ', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 }
+];
+
+function openPresetsModal() {
+  const grid = document.getElementById('presets-grid');
+  grid.innerHTML = TOURNAMENT_PRESETS.map((p, idx) => `
+    <div class="preset-card" onclick="applyPreset(${idx})">
+      <div class="preset-name">${p.emoji} ${escapeHtml(p.name)}</div>
+      <div class="preset-meta">${p.rounds} матчей · ${p.hasPlayoff ? 'плей-офф' : 'лига'}${p.international ? ' · 🌍' : ''}</div>
+    </div>
+  `).join('');
+  document.getElementById('presets-modal').classList.add('show');
+}
+
+function closePresetsModal() {
+  document.getElementById('presets-modal').classList.remove('show');
+}
+
+function applyPreset(idx) {
+  const p = TOURNAMENT_PRESETS[idx];
+  const key = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  tournaments[key] = emptyTournament(p.emoji, p.name, p.rounds, p.hasPlayoff, p.format);
+  tournaments[key].customFormat = {...p.customFormat};
+  tournaments[key].pointsPerWin = p.ptsWin;
+  tournaments[key].pointsPerDraw = p.ptsDraw;
+  tournaments[key].isInternational = p.international;
+  tournamentOrder.push(key);
+  closePresetsModal();
+  renderTabs();
+  renderPanels();
+  renderTopStats(key);
+  renderTeams(key);
+  switchTab(key);
+  debouncedSave();
+  showToast(`Добавлен турнир «${p.name}»`);
+}
+
+// ============ STATE ============
+let tournamentOrder = [];
+let globalTeams = [];
+const tournaments = {};
+
+let seasons = [];
+let currentSeasonIdx = 0;
+let saveTimer = null;
+
+const COLORS = {
+  blue: '#3b82f6', green: '#10b981', amber: '#f59e0b',
+  red: '#ef4444', purple: '#8b5cf6', pink: '#ec4899',
+  teal: '#14b8a6', orange: '#f97316', slate: '#64748b',
+  myTeam: '#f59e0b'
+};
+
+const TOURNAMENT_COLORS = ['#ef4444', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+
+function emptyTournament(emoji, name, rounds, hasPlayoff = false, playoffFormat = 'single') {
+  return {
+    emoji, name, rounds, displayLimit: 0,
+    pointsPerWin: 3, pointsPerDraw: 1, showH2H: true,
+    hasPlayoff, playoffFormat, isInternational: false,
+    customFormat: { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 },
+    teams: [], topScorer: null, topAssist: null,
+    reachedPlayoff: false, playoffMatches: [],
+    groupCollapsed: undefined, playoffCollapsed: undefined,
+    summary: { goals: 0, assists: 0, mvp: 0, accuracy: 0, rating: 0 }
+  };
+}
+
+function initDefaults() {
+  tournamentOrder = ['laliga', 'europa', 'cup', 'wc'];
+  globalTeams = [
+    { id: 'real_betiz', name: 'Real Betiz', isMe: true, flag: '🇪🇸' },
+    { id: 'bacelona', name: 'Bacelona', isMe: false, flag: '🇸' },
+    { id: 'r_madrid', name: 'R-Madrid', isMe: false, flag: '🇪' },
+    { id: 'atlet_madrid', name: 'Atlet Madrid', isMe: false, flag: '🇪🇸' },
+    { id: 'vilarreal', name: 'Vilarreal', isMe: false, flag: '🇪🇸' },
+    { id: 'sevila', name: 'Sevila', isMe: false, flag: '🇸' },
+    { id: 'rb_leipzi', name: 'RB Leipzi', isMe: false, flag: '🇩' },
+    { id: 'veronaa', name: 'Veronaa', isMe: false, flag: '🇮🇹' },
+    { id: 'fk_soch', name: 'FK Soch', isMe: false, flag: '🇷🇺' },
+    { id: 'westhan', name: 'WestHan', isMe: false, flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+    { id: 'roma', name: 'Roma', isMe: false, flag: '🇹' },
+    { id: 'arsnal', name: 'Arsnal', isMe: false, flag: '🏴󠁢󠁥󠁧󠁿' },
+    { id: 'monacco', name: 'Monacco', isMe: false, flag: '🇷' },
+    { id: 'allmeria', name: 'Allmeria', isMe: false, flag: '🇪' },
+    { id: 'vallencia', name: 'Vallencia', isMe: false, flag: '🇪🇸' },
+    { id: 'ibiz_evissa', name: 'Ibiz Evissa', isMe: false, flag: '🇪🇸' },
+    { id: 'athlet_billbao', name: 'Athlet Billbao', isMe: false, flag: '🇪🇸' },
+    { id: 'real_socied', name: 'Real Socied', isMe: false, flag: '🇸' },
+    { id: 'rus', name: 'RUS', isMe: true, flag: '🇷🇺' },
+    { id: 'cro', name: 'CRO', isMe: false, flag: '🇷' },
+    { id: 'pol', name: 'POL', isMe: false, flag: '🇵🇱' },
+    { id: 'sco', name: 'SCO', isMe: false, flag: '🏴󠁧󠁢󠁳󠁣󠁴' },
+    { id: 'cze', name: 'CZE', isMe: false, flag: '🇨🇿' },
+    { id: 'rom', name: 'ROM', isMe: false, flag: '🇷🇴' }
+  ];
+  
+  tournaments.laliga = emptyTournament('🇪🇸', 'Ла Лига', 38);
+  tournaments.laliga.isInternational = false;
+  tournaments.laliga.teams = [
+    { teamId: 'real_betiz', w: 31, d: 7, l: 0, h2h: [0,0,0] },
+    { teamId: 'bacelona', w: 28, d: 7, l: 3, h2h: [2,0,0] },
+    { teamId: 'r_madrid', w: 24, d: 5, l: 9, h2h: [1,1,0] },
+    { teamId: 'atlet_madrid', w: 23, d: 7, l: 8, h2h: [1,1,0] },
+    { teamId: 'vilarreal', w: 18, d: 11, l: 9, h2h: [1,1,0] },
+    { teamId: 'sevila', w: 18, d: 11, l: 9, h2h: [1,1,0] }
+  ];
+  tournaments.laliga.topScorer = 2;
+  tournaments.laliga.topAssist = 2;
+  tournaments.laliga.summary = { goals: 34, assists: 15, mvp: 4, accuracy: 64, rating: 8.6 };
+  
+  tournaments.europa = emptyTournament('🇪🇺', 'Лига Европы', 6, true, 'double');
+  tournaments.europa.isInternational = true;
+  tournaments.europa.teams = [
+    { teamId: 'real_betiz', w: 5, d: 1, l: 0, h2h: [0,0,0] },
+    { teamId: 'rb_leipzi', w: 2, d: 1, l: 3, h2h: [1,1,0] },
+    { teamId: 'veronaa', w: 2, d: 1, l: 3, h2h: [2,0,0] },
+    { teamId: 'fk_soch', w: 1, d: 1, l: 4, h2h: [2,0,0] }
+  ];
+  tournaments.europa.topScorer = 1;
+  tournaments.europa.topAssist = 4;
+  tournaments.europa.reachedPlayoff = true;
+  tournaments.europa.groupCollapsed = true;
+  tournaments.europa.playoffMatches = [
+    { round: '1/8', opponentTeamId: 'westhan', result: 'draw', isHome: true },
+    { round: '1/8', opponentTeamId: 'westhan', result: 'win', isHome: false },
+    { round: '1/4', opponentTeamId: 'roma', result: 'win', isHome: true },
+    { round: '1/4', opponentTeamId: 'roma', result: 'win', isHome: false },
+    { round: '1/2', opponentTeamId: 'arsnal', result: 'win', isHome: false },
+    { round: '1/2', opponentTeamId: 'arsnal', result: 'win', isHome: true },
+    { round: 'Final', opponentTeamId: 'monacco', result: 'loss', isHome: false }
+  ];
+  tournaments.europa.summary = { goals: 17, assists: 5, mvp: 2, accuracy: 68, rating: 8.8 };
+  
+  tournaments.cup = emptyTournament('🇪🇸', 'Кубок Испании', 3, true, 'single');
+  tournaments.cup.isInternational = false;
+  tournaments.cup.customFormat = { '1/8': 1, '1/4': 1, '1/2': 1, 'Final': 1 };
+  tournaments.cup.teams = [
+    { teamId: 'real_betiz', w: 3, d: 0, l: 0, h2h: [0,0,0] },
+    { teamId: 'allmeria', w: 2, d: 0, l: 1, h2h: [1,0,0] },
+    { teamId: 'vallencia', w: 1, d: 0, l: 2, h2h: [1,0,0] },
+    { teamId: 'ibiz_evissa', w: 0, d: 0, l: 3, h2h: [1,0,0] }
+  ];
+  tournaments.cup.topScorer = 2;
+  tournaments.cup.topAssist = 3;
+  tournaments.cup.reachedPlayoff = true;
+  tournaments.cup.groupCollapsed = true;
+  tournaments.cup.playoffMatches = [
+    { round: '1/8', opponentTeamId: 'athlet_billbao', result: 'win', isHome: false },
+    { round: '1/4', opponentTeamId: 'bacelona', result: 'win', isHome: false },
+    { round: '1/2', opponentTeamId: 'real_socied', result: 'win', isHome: false },
+    { round: 'Final', opponentTeamId: 'sevila', result: 'win', isHome: false }
+  ];
+  tournaments.cup.summary = { goals: 8, assists: 4, mvp: 1, accuracy: 80, rating: 9.4 };
+  
+  tournaments.wc = emptyTournament('🌍', 'Квалификация ЧМ', 10);
+  tournaments.wc.isInternational = true;
+  tournaments.wc.teams = [
+    { teamId: 'cro', w: 6, d: 3, l: 1, h2h: [1,1,0] },
+    { teamId: 'rus', w: 5, d: 5, l: 0, h2h: [0,0,0] },
+    { teamId: 'pol', w: 4, d: 4, l: 2, h2h: [1,1,0] },
+    { teamId: 'sco', w: 3, d: 1, l: 6, h2h: [2,0,0] },
+    { teamId: 'rom', w: 1, d: 4, l: 5, h2h: [0,2,0] },
+    { teamId: 'cze', w: 1, d: 3, l: 6, h2h: [1,1,0] }
+  ];
+  tournaments.wc.topScorer = 5;
+  tournaments.wc.topAssist = 3;
+  tournaments.wc.summary = { goals: 5, assists: 3, mvp: 0, accuracy: 38, rating: 7.1 };
+}
+
+function getTeamById(teamId) {
+  if (!teamId) return null;
+  return globalTeams.find(t => t.id === teamId);
+}
+
+function getMyTeamInTournament(key) {
+  const t = tournaments[key];
+  if (!t) return null;
+  for (const entry of t.teams) {
+    const gt = getTeamById(entry.teamId);
+    if (gt && gt.isMe) return { entry, globalTeam: gt };
+  }
+  return null;
+}
+
+function calcPoints(key, w, d) {
+  const t = tournaments[key];
+  if (!t) return 0;
+  return w * (t.pointsPerWin || 3) + d * (t.pointsPerDraw || 1);
+}
+
+function getNextRound(key) {
+  const t = tournaments[key];
+  if (t.playoffMatches.length === 0) return '1/8';
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  const expectedMatches = t.customFormat[lastMatch.round] || 1;
+  const matchesInRound = t.playoffMatches.filter(m => m.round === lastMatch.round);
+  if (matchesInRound.length >= expectedMatches) {
+    const roundOrder = ['1/8', '1/4', '1/2', 'Final'];
+    const idx = roundOrder.indexOf(lastMatch.round);
+    if (idx === -1 || idx === roundOrder.length - 1) return 'Final';
+    return roundOrder[idx + 1];
+  }
+  return lastMatch.round;
+}
+
+function isTournamentFinished(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return false;
+  const groupMatches = my.entry.w + my.entry.d + my.entry.l;
+  if (!t.hasPlayoff) return groupMatches >= t.rounds;
+  if (!t.reachedPlayoff) return groupMatches >= t.rounds;
+  if (t.playoffMatches.length === 0) return false;
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  if (lastMatch.result !== 'win' && lastMatch.result !== 'loss') return false;
+  return lastMatch.round === 'Final' || lastMatch.result === 'loss';
+}
+
+function getAchievement(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return '';
+  const meIdx = t.teams.indexOf(my.entry);
+  if (!t.hasPlayoff) {
+    const rank = meIdx + 1;
+    return rank === 1 ? 'Чемпионство' : `${rank} место`;
+  }
+  if (!t.reachedPlayoff) {
+    const rank = meIdx + 1;
+    return `${rank} место в группе`;
+  }
+  if (t.playoffMatches.length === 0) return '';
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  if (lastMatch.round === 'Final' && lastMatch.result === 'win') return 'Чемпионство';
+  if (lastMatch.round === 'Final' && lastMatch.result === 'loss') return '2 место';
+  if (lastMatch.round === 'Final' && lastMatch.result === 'draw') return 'Финал (ничья)';
+  if (lastMatch.result === 'loss') {
+    const roundRanges = { '1/2': '3-4', '1/4': '5-8', '1/8': '9-16' };
+    const range = roundRanges[lastMatch.round];
+    if (range) return `${range} место`;
+  }
+  return '';
+}
+
+function getTotalMatches(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return 0;
+  const groupMatches = my.entry.w + my.entry.d + my.entry.l;
+  const playoffMatches = t.playoffMatches.filter(m => m.result === 'win' || m.result === 'loss' || m.result === 'draw').length;
+  return groupMatches + playoffMatches;
+}
+
+function getTotalPossibleMatches(key) {
+  const t = tournaments[key];
+  if (!t.hasPlayoff) return t.rounds;
+  let playoffTotal = 0;
+  Object.values(t.customFormat).forEach(v => playoffTotal += v);
+  return t.rounds + playoffTotal;
+}
+
+// ============ FOCUS PRESERVATION ============
+function saveFocusState() {
+  const active = document.activeElement;
+  if (!active || active === document.body) return null;
+  const tagName = active.tagName;
+  if (tagName !== 'INPUT' && tagName !== 'TEXTAREA' && tagName !== 'SELECT') return null;
+  return {
+    focusId: active.dataset.focusId,
+    selStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
+  };
+}
+
+function restoreFocus(state, container) {
+  if (!state || !state.focusId || !container) return;
+  const el = container.querySelector(`[data-focus-id="${state.focusId}"]`);
+  if (!el) return;
+  el.focus();
+  if (state.selStart !== null && typeof el.setSelectionRange === 'function' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    try { 
+      if (el.type === 'text' && el.inputMode === 'numeric') {
+        el.setSelectionRange(el.value.length, el.value.length);
+      } else {
+        el.setSelectionRange(state.selStart, state.selEnd);
+      }
+    } catch(e) {}
+  }
+}
+
+// ============ LOCAL STORAGE ============
+function buildCurrentSeasonData() {
+  return {
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  };
+}
+
+function syncCurrentSeason() {
+  if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) return;
+  const data = buildCurrentSeasonData();
+  seasons[currentSeasonIdx].tournamentOrder = data.tournamentOrder;
+  seasons[currentSeasonIdx].tournaments = data.tournaments;
+  seasons[currentSeasonIdx].globalTeams = data.globalTeams;
+}
+
+function saveToLocalStorage() {
+  try {
+    syncCurrentSeason();
+    const data = {
+      version: 4,
+      seasons: JSON.parse(JSON.stringify(seasons)),
+      currentSeasonIdx
+    };
+    localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+  } catch (e) { console.warn('Save failed', e); }
+}
+
+function debouncedSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToLocalStorage, 800);
+}
+
+function loadFromLocalStorage() {
+  try {
+    for (const vKey of ['tournamentApp_v3', 'tournamentApp_v2']) {
+      const raw = localStorage.getItem(vKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.version = 4;
+        if (data.seasons) {
+          data.seasons.forEach(s => {
+            (s.globalTeams || []).forEach(t => { if (!t.flag) t.flag = ''; });
+            Object.values(s.tournaments || {}).forEach(t => { if (t.isInternational === undefined) t.isInternational = false; });
+          });
+        }
+        localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+        localStorage.removeItem(vKey);
+        break;
+      }
+    }
+    
+    const raw = localStorage.getItem('tournamentApp_v4');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.seasons || data.seasons.length === 0) return false;
+    seasons = data.seasons;
+    currentSeasonIdx = data.currentSeasonIdx ?? 0;
+    if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
+    const s = seasons[currentSeasonIdx];
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = JSON.parse(JSON.stringify(v));
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+    return true;
+  } catch (e) {
+    console.warn('Load failed', e);
+    return false;
+  }
+}
+
+// ============ SEASONS ============
+function updateSeasonSelector() {
+  const selector = document.getElementById('season-selector');
+  if (!selector) return;
+  selector.innerHTML = seasons.map((s, idx) => 
+    `<option value="${idx}" ${idx === currentSeasonIdx ? 'selected' : ''}>Сезон ${s.year}</option>`
+  ).join('');
+}
+
+function onSeasonChange(val) {
+  const idx = parseInt(val);
+  if (isNaN(idx) || idx === currentSeasonIdx) return;
+  switchSeason(idx);
+}
+
+function switchSeason(idx) {
+  if (idx < 0 || idx >= seasons.length) return;
+  syncCurrentSeason();
+  currentSeasonIdx = idx;
+  const s = seasons[idx];
+  Object.keys(tournaments).forEach(k => delete tournaments[k]);
+  tournamentOrder = [...(s.tournamentOrder || [])];
+  for (const [k, v] of Object.entries(s.tournaments || {})) {
+    tournaments[k] = JSON.parse(JSON.stringify(v));
+  }
+  globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  fullRender();
+  saveToLocalStorage();
+  showToast(`Переключено на сезон ${s.year}`);
+}
+
+function openNewSeasonModal() {
+  const defaultYear = seasons.length > 0 ? (seasons[seasons.length - 1].year + 1) : new Date().getFullYear();
+  document.getElementById('new-season-year').value = defaultYear;
+  document.getElementById('new-season-copy-teams').checked = false;
+  document.getElementById('new-season-modal').classList.add('show');
+  setTimeout(() => document.getElementById('new-season-year').focus(), 100);
+}
+
+function closeNewSeasonModal() {
+  document.getElementById('new-season-modal').classList.remove('show');
+}
+
+function createNewSeason() {
+  const yearStr = document.getElementById('new-season-year').value.trim();
+  if (!yearStr) { showToast('Введи год'); return; }
+  const year = parseInt(yearStr);
+  if (isNaN(year)) { showToast('Неверный год'); return; }
+  const copyTeams = document.getElementById('new-season-copy-teams').checked;
+  
+  syncCurrentSeason();
+  const newSeason = { 
+    year, 
+    tournamentOrder: [], 
+    tournaments: {}, 
+    globalTeams: copyTeams ? JSON.parse(JSON.stringify(globalTeams)) : []
+  };
+  seasons.push(newSeason);
+  currentSeasonIdx = seasons.length - 1;
+  Object.keys(tournaments).forEach(k => delete tournaments[k]);
+  tournamentOrder = [];
+  globalTeams = JSON.parse(JSON.stringify(newSeason.globalTeams));
+  
+  closeNewSeasonModal();
+  fullRender();
+  saveToLocalStorage();
+  switchTab('settings');
+  showToast(`✅ Создан сезон ${year}`);
+}
+
+function duplicateCurrentSeason() {
+  syncCurrentSeason();
+  const s = seasons[currentSeasonIdx];
+  const newYear = prompt(`Год для копии сезона ${s.year}:`, s.year + 1);
+  if (!newYear) return;
+  const y = parseInt(newYear);
+  if (isNaN(y)) { showToast('Неверный год'); return; }
+  const copy = {
+    year: y,
+    tournamentOrder: JSON.parse(JSON.stringify(s.tournamentOrder)),
+    tournaments: JSON.parse(JSON.stringify(s.tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(s.globalTeams))
+  };
+  Object.values(copy.tournaments).forEach(t => {
+    t.teams.forEach(tm => { tm.w = 0; tm.d = 0; tm.l = 0; tm.h2h = [0,0,0]; });
+    t.playoffMatches = [];
+    t.reachedPlayoff = false;
+    t.groupCollapsed = undefined;
+    t.playoffCollapsed = undefined;
+    t.topScorer = null;
+    t.topAssist = null;
+    t.summary = { goals: 0, assists: 0, mvp: 0, accuracy: 0, rating: 0 };
+  });
+  seasons.push(copy);
+  switchSeason(seasons.length - 1);
+  showToast(`Дубликат сезона ${y} создан`);
+}
+
+function deleteSeason(idx) {
+  if (seasons.length <= 1) { showToast('Нельзя удалить единственный сезон'); return; }
+  if (!confirm(`Удалить сезон ${seasons[idx].year}?`)) return;
+  seasons.splice(idx, 1);
+  if (currentSeasonIdx >= seasons.length) currentSeasonIdx = seasons.length - 1;
+  else if (currentSeasonIdx > idx) currentSeasonIdx--;
+  else if (currentSeasonIdx === idx) {
+    const s = seasons[currentSeasonIdx];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = JSON.parse(JSON.stringify(v));
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  }
+  fullRender();
+  saveToLocalStorage();
+  showToast('Сезон удалён');
+}
+
+function renameSeason(idx) {
+  const newYear = prompt('Новый год сезона:', seasons[idx].year);
+  if (!newYear) return;
+  const y = parseInt(newYear);
+  if (isNaN(y)) { showToast('Неверный год'); return; }
+  seasons[idx].year = y;
+  updateSeasonSelector();
+  renderSeasonsList();
+  saveToLocalStorage();
+}
+
+function renderSeasonsList() {
+  const container = document.getElementById('seasons-list');
+  if (!container) return;
+  container.innerHTML = '';
+  seasons.forEach((s, idx) => {
+    const isCurrent = idx === currentSeasonIdx;
+    const tCount = (s.tournamentOrder || []).length;
+    const teamCount = (s.globalTeams || []).length;
+    const item = document.createElement('div');
+    item.className = 'season-list-item' + (isCurrent ? ' current' : '');
+    item.innerHTML = `
+      <span style="font-size:18px;">📅</span>
+      <div style="flex:1; min-width:150px;">
+        <div class="name">${s.year} ${isCurrent ? '<span class="my-team-badge">текущий</span>' : ''}</div>
+        <div class="meta">${tCount} турниров · ${teamCount} команд</div>
+      </div>
+      ${!isCurrent ? `<button class="btn btn-sm" onclick="switchSeason(${idx})">Открыть</button>` : ''}
+      <button class="btn btn-sm" onclick="renameSeason(${idx})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSeason(${idx})">✕</button>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// ============ RENDERING ============
+function renderTabs() {
+  const container = document.getElementById('main-tabs');
+  container.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const btn = document.createElement('button');
+    btn.className = 'tab';
+    btn.dataset.tab = key;
+    btn.textContent = `${t.emoji} ${t.name}`;
+    btn.onclick = () => switchTab(key);
+    container.appendChild(btn);
+  });
+  const statsBtn = document.createElement('button');
+  statsBtn.className = 'tab';
+  statsBtn.dataset.tab = 'stats';
+  statsBtn.textContent = '📊 Статистика';
+  statsBtn.onclick = () => switchTab('stats');
+  container.appendChild(statsBtn);
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = 'tab';
+  settingsBtn.dataset.tab = 'settings';
+  settingsBtn.textContent = '⚙️ Настройки';
+  settingsBtn.onclick = () => switchTab('settings');
+  container.appendChild(settingsBtn);
+}
+
+function switchTab(key) {
+  document.querySelectorAll('#main-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`#main-tabs .tab[data-tab="${key}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('panel-' + key);
+  if (panel) panel.classList.add('active');
+  if (key === 'stats') setTimeout(renderAllCharts, 50);
+  if (key === 'settings') renderSettingsPanel();
+}
+
+function renderPanels() {
+  const container = document.getElementById('panels-container');
+  container.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + key;
+    panel.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-wrap">
+            <div class="card-title">${t.emoji} ${escapeHtml(t.name)}</div>
+            <button class="icon-btn" onclick="openTournamentModal('${key}')" title="Настройки турнира">⚙️</button>
+            ${t.hasPlayoff ? `<button class="icon-btn collapse-btn" onclick="toggleGroupCollapse('${key}')" title="Свернуть/развернуть группу" id="collapse-btn-${key}"></button>` : ''}
+          </div>
+          <button class="btn btn-sm" onclick="addTeamToTournament('${key}')">+ Команда</button>
+        </div>
+        <div class="top-stats" id="topstats-${key}"></div>
+        <div id="teams-${key}"></div>
+      </div>
+      <div id="playoff-${key}"></div>
+      <div id="summary-${key}"></div>
+    `;
+    container.appendChild(panel);
+  });
+}
+
+function toggleGroupCollapse(key) {
+  const t = tournaments[key];
+  t.groupCollapsed = !t.groupCollapsed;
+  renderTeams(key);
+  debouncedSave();
+}
+
+function togglePlayoffCollapse(key) {
+  const t = tournaments[key];
+  t.playoffCollapsed = !t.playoffCollapsed;
+  renderPlayoff(key);
+  debouncedSave();
+}
+
+function updateCollapseButton(key) {
+  const btn = document.getElementById('collapse-btn-' + key);
+  if (!btn) return;
+  const t = tournaments[key];
+  btn.textContent = t.groupCollapsed ? '▶ Группа' : '▼ Группа';
+}
+
+function renderTopStats(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('topstats-' + key);
+  if (!container) return;
+  container.innerHTML = `
+    <div class="top-stats-title">⭐ Мои показатели</div>
+    <div class="field-group" style="flex:1; min-width:0;">
+      <span class="field-label">Место в топе бомбардиров</span>
+      <input type="text" inputmode="numeric" value="${t.topScorer ?? ''}" placeholder="—" data-field="topScorer" data-focus-id="top-${key}-scorer">
+    </div>
+    <div class="field-group" style="flex:1; min-width:0;">
+      <span class="field-label">Место в топе ассистентов</span>
+      <input type="text" inputmode="numeric" value="${t.topAssist ?? ''}" placeholder="—" data-field="topAssist" data-focus-id="top-${key}-assist">
+    </div>
+  `;
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field = e.target.dataset.field;
+      const val = e.target.value === '' ? null : parseIntSafe(e.target.value);
+      if (field === 'topScorer') t.topScorer = val;
+      else if (field === 'topAssist') t.topAssist = val;
+      debouncedSave();
+    });
+  });
+}
+
+function renderTeams(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('teams-' + key);
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  updateCollapseButton(key);
+  
+  const my = getMyTeamInTournament(key);
+  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
+  if (t.hasPlayoff && groupMatches >= t.rounds && t.playoffMatches.length > 0 && t.groupCollapsed === undefined) {
+    t.groupCollapsed = true;
+  }
+  
+  const groupCollapsed = t.groupCollapsed || false;
+  
+  if (groupCollapsed && t.hasPlayoff) {
+    container.innerHTML = `
+      <div class="group-collapsed-hint">
+        Групповая стадия свёрнута (${t.teams.length} команд). 
+        <button class="btn btn-sm" onclick="toggleGroupCollapse('${key}')" style="margin-left:8px;">Развернуть</button>
+      </div>
+    `;
+    renderPlayoff(key);
+    renderSummary(key);
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  t.teams.forEach((teamEntry, idx) => {
+    const globalTeam = getTeamById(teamEntry.teamId);
+    const isMe = globalTeam ? globalTeam.isMe : false;
+    
+    const row = document.createElement('div');
+    row.className = 'team-row auto' + (isMe ? ' my-team' : '');
+    row.dataset.idx = idx;
+    
+    const badge = isMe ? '<span class="my-team-badge">ваша</span>' : '';
+    const pts = calcPoints(key, teamEntry.w, teamEntry.d);
+    
+    row.innerHTML = `
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
+          <option value="">Выбери команду</option>
+          ${globalTeams.map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+        </select>
+        ${badge}
+        <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
+      </div>
+      <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Победы</span><input type="text" inputmode="numeric" value="${teamEntry.w}" data-field="w" data-focus-id="team-${key}-${idx}-w"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Ничьи</span><input type="text" inputmode="numeric" value="${teamEntry.d}" data-field="d" data-focus-id="team-${key}-${idx}-d"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Поражения</span><input type="text" inputmode="numeric" value="${teamEntry.l}" data-field="l" data-focus-id="team-${key}-${idx}-l"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Очки</span><div class="points-display">${pts}</div></div>
+      </div>
+      <div class="fields">
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: П</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[0]}" data-field="h2h-w" data-focus-id="team-${key}-${idx}-h2hw"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: Н</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[1]}" data-field="h2h-d" data-focus-id="team-${key}-${idx}-h2hd"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: ПР</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[2]}" data-field="h2h-l" data-focus-id="team-${key}-${idx}-h2hl"></div>
+      </div>
+      ${isMe ? '<div class="my-team-note">💡 Для вашей команды H2H не указывается</div>' : ''}
+    `;
+    
+    row.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const field = e.target.dataset.field;
+        const entry = tournaments[key].teams[idx];
+        if (field === 'teamId') {
+          entry.teamId = e.target.value;
+          renderTeams(key);
+          debouncedSave();
+          return;
+        } else if (field === 'w') entry.w = parseIntSafe(e.target.value);
+        else if (field === 'd') entry.d = parseIntSafe(e.target.value);
+        else if (field === 'l') entry.l = parseIntSafe(e.target.value);
+        else if (field === 'h2h-w') entry.h2h[0] = parseIntSafe(e.target.value);
+        else if (field === 'h2h-d') entry.h2h[1] = parseIntSafe(e.target.value);
+        else if (field === 'h2h-l') entry.h2h[2] = parseIntSafe(e.target.value);
+        
+        const ptsEl = row.querySelector('.points-display');
+        if (ptsEl) ptsEl.textContent = calcPoints(key, entry.w, entry.d);
+        
+        debouncedSave();
+      });
+    });
+    
+    container.appendChild(row);
+  });
+  
+  restoreFocus(focusState, container);
+  
+  renderPlayoff(key);
+  renderSummary(key);
+}
+
+function addTeamToTournament(key) {
+  tournaments[key].teams.push({ teamId: '', w: 0, d: 0, l: 0, h2h: [0, 0, 0] });
+  renderTeams(key);
+  debouncedSave();
+}
+
+function removeTeam(key, idx) {
+  tournaments[key].teams.splice(idx, 1);
+  renderTeams(key);
+  debouncedSave();
+}
+
+function renderGlobalTeams() {
+  const container = document.getElementById('global-teams-list');
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  container.innerHTML = '';
+  globalTeams.forEach((team, idx) => {
+    const item = document.createElement('div');
+    item.className = 'team-list-item' + (team.isMe ? ' my-team' : '');
+    item.innerHTML = `
+      <button class="flag-preview" onclick="openFlagForGlobalTeam(${idx})" title="Выбрать флаг">${team.flag || '🏳️'}</button>
+      <input type="text" value="${escapeHtml(team.name)}" placeholder="Название команды" style="flex:1; min-width:150px;" data-field="name" data-idx="${idx}" data-focus-id="gteam-${idx}-name">
+      <label class="checkbox-row">
+        <input type="checkbox" ${team.isMe ? 'checked' : ''} data-field="isMe" data-idx="${idx}" data-focus-id="gteam-${idx}-isme">
+        Ваша
+      </label>
+      <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${idx})">✕</button>
+    `;
+    
+    item.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const field = e.target.dataset.field;
+        const i = parseInt(e.target.dataset.idx);
+        if (field === 'name') {
+          globalTeams[i].name = e.target.value;
+          tournamentOrder.forEach(k => updateTeamSelects(k));
+          debouncedSave();
+        } else if (field === 'isMe') {
+          globalTeams[i].isMe = e.target.checked;
+          renderGlobalTeams();
+          tournamentOrder.forEach(k => renderTeams(k));
+          debouncedSave();
+        }
+      });
+    });
+    
+    container.appendChild(item);
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+function openFlagForGlobalTeam(idx) {
+  const team = globalTeams[idx];
+  openFlagModal(team.flag || '', (flag) => {
+    team.flag = flag;
+    renderGlobalTeams();
+    tournamentOrder.forEach(k => {
+      updateTeamSelects(k);
+    });
+    debouncedSave();
+  });
+}
+
+function updateTeamSelects(key) {
+  const container = document.getElementById('teams-' + key);
+  if (!container) return;
+  const rows = container.querySelectorAll('.team-row');
+  rows.forEach((row, idx) => {
+    const entry = tournaments[key].teams[idx];
+    if (!entry) return;
+    const select = row.querySelector('select[data-field="teamId"]');
+    if (select) {
+      const currentVal = select.value;
+      select.innerHTML = `
+        <option value="">Выбери команду</option>
+        ${globalTeams.map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+      `;
+    }
+  });
+}
+
+function renderPlayoff(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('playoff-' + key);
+  if (!container) return;
+  
+  if (!t.hasPlayoff) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const my = getMyTeamInTournament(key);
+  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
+  const showPlayoff = groupMatches >= t.rounds;
+  
+  if (t.playoffMatches.length > 0 && !t.reachedPlayoff) {
+    t.reachedPlayoff = true;
+  }
+  
+  if (!showPlayoff) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const playoffCollapsed = t.playoffCollapsed || false;
+  
+  container.innerHTML = `
+    <div class="playoff-section">
+      <div class="playoff-header">
+        <div class="playoff-title">🏆 Плей-офф</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-sm collapse-btn" onclick="togglePlayoffCollapse('${key}')">${playoffCollapsed ? '▶ Развернуть' : '▼ Свернуть'}</button>
+          <label class="checkbox-row">
+            <input type="checkbox" id="reached-playoff-${key}" ${t.reachedPlayoff ? 'checked' : ''}>
+            Вышел в плей-офф
+          </label>
+        </div>
+      </div>
+      <div id="playoff-matches-${key}" ${playoffCollapsed ? 'style="display:none;"' : ''}></div>
+    </div>
+  `;
+  
+  document.getElementById('reached-playoff-' + key).addEventListener('change', (e) => {
+    t.reachedPlayoff = e.target.checked;
+    if (!t.reachedPlayoff) t.playoffMatches = [];
+    renderPlayoff(key);
+    renderSummary(key);
+    debouncedSave();
+  });
+  
+  if (t.reachedPlayoff && !playoffCollapsed) renderPlayoffMatches(key);
+}
+
+function renderPlayoffMatches(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('playoff-matches-' + key);
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  const rounds = ['1/8', '1/4', '1/2', 'Final'];
+  const resultLabels = { 'win': 'Победа', 'loss': 'Поражение', 'draw': 'Ничья', 'scheduled': 'Запланировано' };
+  
+  const matchesHtml = t.playoffMatches.map((match, idx) => {
+    const statusClass = match.result || 'scheduled';
+    return `
+      <div class="playoff-match ${statusClass}">
+        <div class="field-group">
+          <span class="field-label">Раунд</span>
+          <select data-idx="${idx}" data-field="round" data-focus-id="po-${key}-${idx}-round">
+            ${rounds.map(r => `<option value="${r}" ${match.round === r ? 'selected' : ''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Соперник</span>
+          <select data-idx="${idx}" data-field="opponentTeamId" data-focus-id="po-${key}-${idx}-opp">
+            <option value="">— выбери —</option>
+            ${globalTeams.filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Результат</span>
+          <select data-idx="${idx}" data-field="result" data-focus-id="po-${key}-${idx}-res">
+            ${Object.entries(resultLabels).map(([val, label]) => `<option value="${val}" ${match.result === val ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Дома</span>
+          <label class="checkbox-row" style="padding:6px 0;">
+            <input type="checkbox" data-idx="${idx}" data-field="isHome" ${match.isHome ? 'checked' : ''} data-focus-id="po-${key}-${idx}-home">
+          </label>
+        </div>
+        <div class="field-group" style="justify-content:flex-end;">
+          <button class="btn btn-danger btn-sm" onclick="removePlayoffMatch('${key}', ${idx})">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  container.innerHTML = matchesHtml + `
+    <button class="btn btn-sm" onclick="addPlayoffMatch('${key}')" style="margin-top:8px;">+ Матч</button>
+  `;
+  
+  container.querySelectorAll('select, input[type="checkbox"]').forEach(input => {
+    const handler = (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      const field = e.target.dataset.field;
+      if (isNaN(idx) || !field) return;
+      const match = t.playoffMatches[idx];
+      if (!match) return;
+      
+      if (field === 'isHome') match.isHome = e.target.checked;
+      else match[field] = e.target.value;
+      
+      if (field === 'opponentTeamId') {
+        t.playoffMatches.forEach((m, i) => {
+          if (i !== idx && m.round === match.round) m.opponentTeamId = match.opponentTeamId;
+        });
+      }
+      
+      renderPlayoffMatches(key);
+      renderSummary(key);
+      debouncedSave();
+    };
+    input.addEventListener('change', handler);
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+function addPlayoffMatch(key) {
+  const t = tournaments[key];
+  const round = getNextRound(key);
+  t.playoffMatches.push({ round: round, opponentTeamId: '', result: 'scheduled', isHome: false });
+  
+  const expectedMatches = t.customFormat[round] || 1;
+  const matchesInRound = t.playoffMatches.filter(m => m.round === round);
+  if (matchesInRound.length === 1 && expectedMatches === 2) {
+    t.playoffMatches.push({ round: round, opponentTeamId: '', result: 'scheduled', isHome: true });
+  }
+  
+  renderPlayoffMatches(key);
+  renderSummary(key);
+  debouncedSave();
+}
+
+function removePlayoffMatch(key, idx) {
+  const t = tournaments[key];
+  const match = t.playoffMatches[idx];
+  const pairMatches = t.playoffMatches.filter((m, i) => 
+    i !== idx && m.round === match.round && 
+    (m.opponentTeamId === match.opponentTeamId || !match.opponentTeamId)
+  );
+  if (pairMatches.length === 1 && (t.customFormat[match.round] || 1) === 2) {
+    const pairIdx = t.playoffMatches.indexOf(pairMatches[0]);
+    if (pairIdx > idx) {
+      t.playoffMatches.splice(pairIdx, 1);
+      t.playoffMatches.splice(idx, 1);
+    } else {
+      t.playoffMatches.splice(idx, 1);
+      t.playoffMatches.splice(pairIdx, 1);
+    }
+  } else {
+    t.playoffMatches.splice(idx, 1);
+  }
+  renderPlayoffMatches(key);
+  renderSummary(key);
+  debouncedSave();
+}
+
+function buildSummaryText(key) {
+  const t = tournaments[key];
+  const achievement = getAchievement(key);
+  const totalMatches = getTotalMatches(key);
+  const s = t.summary;
+  
+  const parts = [];
+  if (achievement) parts.push(achievement);
+  if (t.topScorer === 1) parts.push('Золотая бутса');
+  parts.push(`${totalMatches} матчей`);
+  parts.push(`${s.goals} голов`);
+  parts.push(`${s.assists} ассистов`);
+  parts.push(`${s.mvp} МВП`);
+  parts.push(`${s.accuracy}% точности`);
+  parts.push(`${s.rating} рейтинга`);
+  
+  return `Итог ${t.name}: ${parts.join(', ')}`;
+}
+
+function renderSummary(key) {
+  const t = tournaments[key];
+  const container = document.getElementById('summary-' + key);
+  if (!container) return;
+  
+  const focusState = saveFocusState();
+  
+  const my = getMyTeamInTournament(key);
+  const groupMatches = my ? my.entry.w + my.entry.d + my.entry.l : 0;
+  const hasAnyData = groupMatches > 0 || t.playoffMatches.length > 0;
+  
+  if (!hasAnyData) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const finished = isTournamentFinished(key);
+  const summaryText = finished ? buildSummaryText(key) : '';
+  const s = t.summary;
+  
+  container.innerHTML = `
+    <div class="summary-section">
+      <div class="summary-title">${finished ? '📊 Итог турнира' : '📊 Мои показатели турнира'}</div>
+      ${finished ? `<div class="summary-text">${escapeHtml(summaryText)}</div>` : ''}
+      <div class="summary-fields">
+        <div class="field-group"><span class="field-label">Голы</span><input type="text" inputmode="numeric" value="${s.goals}" data-field="goals" data-focus-id="sum-${key}-goals"></div>
+        <div class="field-group"><span class="field-label">Ассисты</span><input type="text" inputmode="numeric" value="${s.assists}" data-field="assists" data-focus-id="sum-${key}-assists"></div>
+        <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" value="${s.mvp}" data-field="mvp" data-focus-id="sum-${key}-mvp"></div>
+        <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" value="${s.accuracy}" data-field="accuracy" data-focus-id="sum-${key}-accuracy"></div>
+        <div class="field-group"><span class="field-label">Рейтинг</span><input type="text" inputmode="decimal" value="${s.rating}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating"></div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field = e.target.dataset.field;
+      if (field === 'rating') {
+        t.summary[field] = parseNum(e.target.value);
+      } else {
+        t.summary[field] = parseIntSafe(e.target.value);
+      }
+      if (isTournamentFinished(key)) {
+        const textEl = container.querySelector('.summary-text');
+        if (textEl) textEl.textContent = buildSummaryText(key);
+      }
+      debouncedSave();
+    });
+  });
+  
+  restoreFocus(focusState, container);
+}
+
+let currentModalKey = null;
+
+function openTournamentModal(key) {
+  currentModalKey = key;
+  const t = tournaments[key];
+  document.getElementById('modal-emoji').value = t.emoji;
+  document.getElementById('modal-name').value = t.name;
+  document.getElementById('modal-rounds').value = t.rounds;
+  document.getElementById('modal-limit').value = t.displayLimit || '';
+  document.getElementById('modal-pts-win').value = t.pointsPerWin;
+  document.getElementById('modal-pts-draw').value = t.pointsPerDraw;
+  document.getElementById('modal-show-h2h').checked = t.showH2H;
+  document.getElementById('modal-international').checked = t.isInternational || false;
+  document.getElementById('modal-has-playoff').checked = t.hasPlayoff;
+  updatePlayoffFormatUI();
+  if (t.hasPlayoff) {
+    document.getElementById('modal-playoff-format').value = t.playoffFormat;
+    updateCustomFormatUI();
+    document.getElementById('custom-1/8').value = t.customFormat['1/8'];
+    document.getElementById('custom-1/4').value = t.customFormat['1/4'];
+    document.getElementById('custom-1/2').value = t.customFormat['1/2'];
+  }
+  document.getElementById('tournament-modal').classList.add('show');
+}
+
+function updatePlayoffFormatUI() {
+  const hasPlayoff = document.getElementById('modal-has-playoff').checked;
+  document.getElementById('playoff-format-section').style.display = hasPlayoff ? 'block' : 'none';
+}
+
+function updateCustomFormatUI() {
+  const format = document.getElementById('modal-playoff-format').value;
+  document.getElementById('custom-format-fields').style.display = format === 'custom' ? 'block' : 'none';
+}
+
+document.getElementById('modal-has-playoff').addEventListener('change', updatePlayoffFormatUI);
+document.getElementById('modal-playoff-format').addEventListener('change', updateCustomFormatUI);
+
+function closeModal() {
+  document.getElementById('tournament-modal').classList.remove('show');
+  currentModalKey = null;
+}
+
+function saveTournamentSettings() {
+  if (!currentModalKey) return;
+  const t = tournaments[currentModalKey];
+  t.emoji = document.getElementById('modal-emoji').value || '🏆';
+  t.name = document.getElementById('modal-name').value || 'Турнир';
+  t.rounds = Math.max(0, parseIntSafe(document.getElementById('modal-rounds').value));
+  t.displayLimit = Math.max(0, parseIntSafe(document.getElementById('modal-limit').value));
+  t.pointsPerWin = Math.max(0, parseIntSafe(document.getElementById('modal-pts-win').value));
+  t.pointsPerDraw = Math.max(0, parseIntSafe(document.getElementById('modal-pts-draw').value));
+  t.showH2H = document.getElementById('modal-show-h2h').checked;
+  t.isInternational = document.getElementById('modal-international').checked;
+  t.hasPlayoff = document.getElementById('modal-has-playoff').checked;
+  if (t.hasPlayoff) {
+    t.playoffFormat = document.getElementById('modal-playoff-format').value;
+    if (t.playoffFormat === 'custom') {
+      t.customFormat['1/8'] = parseIntSafe(document.getElementById('custom-1/8').value) || 1;
+      t.customFormat['1/4'] = parseIntSafe(document.getElementById('custom-1/4').value) || 1;
+      t.customFormat['1/2'] = parseIntSafe(document.getElementById('custom-1/2').value) || 1;
+    } else if (t.playoffFormat === 'single') {
+      t.customFormat = { '1/8': 1, '1/4': 1, '1/2': 1, 'Final': 1 };
+    } else if (t.playoffFormat === 'double') {
+      t.customFormat = { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 };
+    }
+  }
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  switchTab(currentModalKey);
+  closeModal();
+  debouncedSave();
+  showToast('Настройки сохранены');
+}
+
+function deleteCurrentTournament() {
+  if (!currentModalKey) return;
+  if (!confirm(`Удалить турнир «${tournaments[currentModalKey].name}»?`)) return;
+  const key = currentModalKey;
+  delete tournaments[key];
+  tournamentOrder = tournamentOrder.filter(k => k !== key);
+  closeModal();
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  switchTab(tournamentOrder[0] || 'settings');
+  debouncedSave();
+  showToast('Турнир удалён');
+}
+
+function renderSettingsPanel() {
+  renderSeasonsList();
+  const list = document.getElementById('tournament-list');
+  list.innerHTML = '';
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    const item = document.createElement('div');
+    item.className = 'tournament-list-item';
+    item.innerHTML = `
+      <span style="font-size:18px;">${t.emoji}</span>
+      <div style="flex:1; min-width:150px;">
+        <div class="name">${escapeHtml(t.name)} ${t.isInternational ? '<span style="font-size:10px; color:var(--text-muted);">🌍</span>' : ''}</div>
+        <div class="meta">${t.teams.length} команд · ${t.rounds} матчей · ${t.hasPlayoff ? 'плей-офф' : 'лига'}${t.displayLimit > 0 ? ` · топ-${t.displayLimit}` : ''}</div>
+      </div>
+      <button class="btn btn-sm" onclick="openTournamentModal('${key}')">⚙️</button>
+    `;
+    list.appendChild(item);
+  });
+  renderGlobalTeams();
+}
+
+let tournamentCounter = 0;
+function addTournament() {
+  tournamentCounter++;
+  const key = 'custom_' + Date.now() + '_' + tournamentCounter;
+  tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
+  tournamentOrder.push(key);
+  renderTabs();
+  renderPanels();
+  renderTopStats(key);
+  renderTeams(key);
+  switchTab(key);
+  openTournamentModal(key);
+  debouncedSave();
+}
+
+function buildExportData() {
+  syncCurrentSeason();
+  return {
+    version: 4,
+    seasons: JSON.parse(JSON.stringify(seasons)),
+    currentSeasonIdx
+  };
+}
+
+function openDataModal(tab = 'export') {
+  if (tab === 'export') {
+    const data = buildExportData();
+    document.getElementById('export-textarea').value = JSON.stringify(data, null, 2);
+  } else {
+    document.getElementById('import-textarea').value = '';
+  }
+  switchDataTab(tab);
+  document.getElementById('data-modal').classList.add('show');
+}
+
+function closeDataModal() {
+  document.getElementById('data-modal').classList.remove('show');
+}
+
+function switchDataTab(tab) {
+  document.querySelectorAll('.data-modal-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.data-modal-panel').forEach(p => p.classList.remove('active'));
+  const tabBtn = document.querySelector(`.data-modal-tab[data-panel="${tab}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  const panel = document.getElementById('data-panel-' + tab);
+  if (panel) panel.classList.add('active');
+  if (tab === 'export') {
+    const data = buildExportData();
+    document.getElementById('export-textarea').value = JSON.stringify(data, null, 2);
+  }
+}
+
+function copyExportData() {
+  const data = buildExportData();
+  const json = JSON.stringify(data, null, 2);
+  const textarea = document.getElementById('export-textarea');
+  textarea.value = json;
+  
+  const done = () => showToast('✅ JSON скопирован');
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(json).then(done).catch(() => {
+      textarea.select();
+      try { document.execCommand('copy'); done(); } 
+      catch (err) { showToast('❌ Не удалось скопировать'); }
+    });
+  } else {
+    textarea.select();
+    try { document.execCommand('copy'); done(); } 
+    catch (err) { showToast('❌ Не удалось скопировать'); }
+  }
+}
+
+function downloadExportFile() {
+  try {
+    const data = buildExportData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0,10);
+    a.download = `tournaments_${date}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    showToast('✅ Файл скачивается');
+  } catch (err) {
+    showToast('️ Ошибка: ' + err.message);
+  }
+}
+
+function importFromText() {
+  const text = document.getElementById('import-textarea').value.trim();
+  if (!text) { showToast('️ Вставь JSON'); return; }
+  doImport(text);
+}
+
+function importFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => doImport(e.target.result);
+  reader.onerror = () => showToast('❌ Не удалось прочитать');
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function normalizeTournament(v) {
+  return {
+    emoji: v.emoji || '🏆', name: v.name || 'Турнир',
+    rounds: v.rounds || 10, displayLimit: v.displayLimit || 0,
+    pointsPerWin: v.pointsPerWin ?? 3, pointsPerDraw: v.pointsPerDraw ?? 1,
+    showH2H: v.showH2H ?? true, hasPlayoff: v.hasPlayoff ?? false,
+    isInternational: v.isInternational ?? false,
+    playoffFormat: v.playoffFormat || 'single',
+    customFormat: v.customFormat || { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 },
+    teams: v.teams || [], topScorer: v.topScorer ?? null, topAssist: v.topAssist ?? null,
+    reachedPlayoff: v.reachedPlayoff ?? false, playoffMatches: v.playoffMatches || [],
+    groupCollapsed: v.groupCollapsed, playoffCollapsed: v.playoffCollapsed,
+    summary: {
+      goals: v.summary?.goals || 0, assists: v.summary?.assists || 0,
+      mvp: v.summary?.mvp || 0, accuracy: v.summary?.accuracy || 0,
+      rating: v.summary?.rating || 0
+    }
+  };
+}
+
+function doImport(text) {
+  try {
+    const data = JSON.parse(text);
+    
+    if (data.tournaments && data.tournamentOrder && !data.seasons) {
+      const year = new Date().getFullYear();
+      seasons = [{
+        year,
+        tournamentOrder: data.tournamentOrder,
+        tournaments: data.tournaments,
+        globalTeams: data.globalTeams || []
+      }];
+      currentSeasonIdx = 0;
+    } else if (data.seasons) {
+      seasons = data.seasons.map(s => ({
+        year: s.year,
+        tournamentOrder: s.tournamentOrder || [],
+        tournaments: s.tournaments || {},
+        globalTeams: s.globalTeams || []
+      }));
+      currentSeasonIdx = data.currentSeasonIdx ?? 0;
+      if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
+    } else {
+      throw new Error('Неверный формат');
+    }
+    
+    const s = seasons[currentSeasonIdx];
+    Object.keys(tournaments).forEach(k => delete tournaments[k]);
+    tournamentOrder = [...(s.tournamentOrder || [])];
+    for (const [k, v] of Object.entries(s.tournaments || {})) {
+      tournaments[k] = normalizeTournament(v);
+    }
+    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+    globalTeams.forEach(t => { if (!t.flag) t.flag = ''; });
+    
+    fullRender();
+    saveToLocalStorage();
+    closeDataModal();
+    showToast('✅ Данные импортированы');
+  } catch (err) {
+    showToast('❌ Ошибка: ' + err.message);
+  }
+}
+
+function formatTeamLine(key, rank, teamEntry) {
+  const t = tournaments[key];
+  const globalTeam = getTeamById(teamEntry.teamId);
+  if (!globalTeam) return '';
+  const pts = calcPoints(key, teamEntry.w, teamEntry.d);
+  const name = globalTeam.name || '???';
+  const flag = t.isInternational && globalTeam.flag ? globalTeam.flag + ' ' : '';
+  const base = `${rank}. ${flag}${name}: ${teamEntry.w} / ${teamEntry.d} / ${teamEntry.l} (${pts})`;
+  if (globalTeam.isMe || !t.showH2H) return base;
+  return `${base} [${teamEntry.h2h[0]} / ${teamEntry.h2h[1]} / ${teamEntry.h2h[2]}]`;
+}
+
+function formatPlayoffMatch(match, myName, myFlag, t) {
+  const opponent = getTeamById(match.opponentTeamId);
+  const opponentName = opponent ? opponent.name : '???';
+  const opponentFlag = t.isInternational && opponent?.flag ? opponent.flag + ' ' : '';
+  const myFlagStr = t.isInternational && myFlag ? myFlag + ' ' : '';
+  const resultText = {
+    'win': 'Победа', 'loss': 'Поражение',
+    'draw': 'Ничья', 'scheduled': 'Запланировано'
+  }[match.result] || '???';
+  if (match.isHome) return `${match.round}. ${myFlagStr}${myName} — ${opponentFlag}${opponentName} (${resultText})`;
+  return `${match.round}. ${opponentFlag}${opponentName} — ${myFlagStr}${myName} (${resultText})`;
+}
+
+function generate() {
+  tournamentOrder.forEach(key => {
+    tournaments[key].teams.sort((a, b) => calcPoints(key, b.w, b.d) - calcPoints(key, a.w, a.d));
+  });
+  
+  const blocks = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    const my = getMyTeamInTournament(key);
+    const myName = my ? my.globalTeam.name : '';
+    const myFlag = my ? my.globalTeam.flag : '';
+    let block = `${t.emoji} ${t.name}\n`;
+    if (t.hasPlayoff && t.reachedPlayoff) block += 'Группа:\n';
+    let teamsToDisplay = t.teams;
+    if (t.displayLimit > 0) teamsToDisplay = t.teams.slice(0, t.displayLimit);
+    teamsToDisplay.forEach((teamEntry, i) => {
+      const line = formatTeamLine(key, i + 1, teamEntry);
+      if (line) block += line + '\n';
+    });
+    if (t.hasPlayoff && t.reachedPlayoff && t.playoffMatches.length > 0) {
+      block += '\nПлей-офф:\n';
+      t.playoffMatches.forEach(match => { block += formatPlayoffMatch(match, myName, myFlag, t) + '\n'; });
+    }
+    const ranks = [];
+    if (t.topScorer != null) ranks.push(`#${t.topScorer}`);
+    if (t.topAssist != null) ranks.push(`#${t.topAssist}`);
+    if (ranks.length > 0) block += `(${ranks.join(', ')})`;
+    if (isTournamentFinished(key)) {
+      block += `\n\n${buildSummaryText(key)}`;
+    }
+    blocks.push(block);
+  });
+  
+  const allFinished = tournamentOrder.length > 0 && tournamentOrder.every(key => isTournamentFinished(key));
+  
+  if (allFinished) {
+    let seasonTotal = { trophies: 0, goldenBoots: 0, matches: 0, goals: 0, assists: 0, mvp: 0, ratingSum: 0, ratingCount: 0 };
+    tournamentOrder.forEach(key => {
+      const t = tournaments[key];
+      const achievement = getAchievement(key);
+      if (achievement === 'Чемпионство') seasonTotal.trophies++;
+      if (t.topScorer === 1) seasonTotal.goldenBoots++;
+      seasonTotal.matches += getTotalMatches(key);
+      seasonTotal.goals += t.summary.goals;
+      seasonTotal.assists += t.summary.assists;
+      seasonTotal.mvp += t.summary.mvp;
+      if (t.summary.rating > 0) {
+        seasonTotal.ratingSum += t.summary.rating;
+        seasonTotal.ratingCount++;
+      }
+    });
+    
+    const seasonParts = [];
+    if (seasonTotal.trophies > 0) seasonParts.push(''.repeat(seasonTotal.trophies));
+    if (seasonTotal.goldenBoots > 0) seasonParts.push('🏅'.repeat(seasonTotal.goldenBoots));
+    seasonParts.push(`${seasonTotal.matches} матчей`);
+    seasonParts.push(`${seasonTotal.goals} голов`);
+    seasonParts.push(`${seasonTotal.assists} ассистов`);
+    seasonParts.push(`${seasonTotal.mvp} МВП`);
+    if (seasonTotal.ratingCount > 0) {
+      const avgRating = (seasonTotal.ratingSum / seasonTotal.ratingCount).toFixed(1);
+      seasonParts.push(`${avgRating} рейтинга`);
+    }
+    blocks.push(`Итог сезона: ${seasonParts.join(', ')}`);
+  }
+  
+  const output = document.getElementById('output');
+  if (blocks.length === 0) {
+    output.innerHTML = '<div class="empty">Добавь команды в турниры</div>';
+  } else {
+    output.textContent = blocks.join('\n\n');
+  }
+}
+
+function copyOutput() {
+  const text = document.getElementById('output').textContent;
+  if (!text || text.includes('Нажми «Сгенерировать»')) {
+    showToast('Сначала сгенерируй');
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => showToast('Скопировано'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Скопировано');
+    });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function resetAll() {
+  if (!confirm('Сбросить все данные и сезоны?')) return;
+  localStorage.removeItem('tournamentApp_v4');
+  seasons = [];
+  currentSeasonIdx = 0;
+  initDefaults();
+  seasons = [{
+    year: 2025,
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  }];
+  currentSeasonIdx = 0;
+  fullRender();
+  saveToLocalStorage();
+  document.getElementById('output').innerHTML = '<div class="empty">Нажми «Сгенерировать»</div>';
+  switchTab(tournamentOrder[0]);
+}
+
+function fullRender() {
+  renderTabs();
+  renderPanels();
+  tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
+  updateSeasonSelector();
+  const activeTab = document.querySelector('#main-tabs .tab.active');
+  if (activeTab) {
+    switchTab(activeTab.dataset.tab);
+  } else if (tournamentOrder.length > 0) {
+    switchTab(tournamentOrder[0]);
+  } else {
+    switchTab('settings');
+  }
+}
+
+// ============ CHARTS ============
+const chartInstances = {};
+let currentFormTournament = null;
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { font: { family: '-apple-system, BlinkMacSystemFont, sans-serif', size: 12 }, color: '#1a1a1a', boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 2, padding: 12 } },
+    tooltip: { backgroundColor: '#1a1a1a', titleColor: '#fff', bodyColor: '#fff', padding: 10, cornerRadius: 4, titleFont: { weight: '600' }, displayColors: false }
+  }
+};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function getTournamentColor(key) {
+  const idx = tournamentOrder.indexOf(key);
+  return TOURNAMENT_COLORS[idx % TOURNAMENT_COLORS.length];
+}
+
+function renderSummaryStats() {
+  const container = document.getElementById('stats-summary');
+  const totalTeams = tournamentOrder.reduce((s, k) => s + (tournaments[k]?.teams.length || 0), 0);
+  let myTotalPts = 0, myBestRank = null, myWorstRank = null, myTournamentsCount = 0;
+  let totalGoals = 0, totalAssists = 0, totalMvp = 0, totalMatches = 0, trophies = 0;
+  let ratingSum = 0, ratingCount = 0;
+  tournamentOrder.forEach(k => {
+    const t = tournaments[k];
+    const my = getMyTeamInTournament(k);
+    if (my) {
+      myTournamentsCount++;
+      myTotalPts += calcPoints(k, my.entry.w, my.entry.d);
+      const rank = t.teams.indexOf(my.entry) + 1;
+      if (myBestRank === null || rank < myBestRank) myBestRank = rank;
+      if (myWorstRank === null || rank > myWorstRank) myWorstRank = rank;
+    }
+    totalGoals += t.summary.goals;
+    totalAssists += t.summary.assists;
+    totalMvp += t.summary.mvp;
+    totalMatches += getTotalMatches(k);
+    if (getAchievement(k) === 'Чемпионство') trophies++;
+    if (t.summary.rating > 0) { ratingSum += t.summary.rating; ratingCount++; }
+  });
+  const avgRating = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
+  const seasonYear = seasons[currentSeasonIdx]?.year || '—';
+  container.innerHTML = `
+    <div class="stat-box"><div class="label">Сезон</div><div class="value">${seasonYear}</div><div class="sub">${seasons.length} всего</div></div>
+    <div class="stat-box highlight"><div class="label">🏆 Трофеи</div><div class="value">${trophies}</div><div class="sub">${myTournamentsCount} турниров</div></div>
+    <div class="stat-box"><div class="label">Матчей</div><div class="value">${totalMatches}</div><div class="sub">${totalTeams} команд</div></div>
+    <div class="stat-box"><div class="label">⚽ Голы</div><div class="value">${totalGoals}</div><div class="sub">${totalAssists} ассистов</div></div>
+    <div class="stat-box"><div class="label">Лучшая позиция</div><div class="value">${myBestRank ?? '—'}</div><div class="sub">худшая: ${myWorstRank ?? '—'}</div></div>
+    <div class="stat-box"><div class="label">⭐ Рейтинг</div><div class="value">${avgRating}</div><div class="sub">${totalMvp} МВП</div></div>
+  `;
+}
+
+function renderPointsChart() {
+  destroyChart('chart-points');
+  const ctx = document.getElementById('chart-points').getContext('2d');
+  const sorted = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    const color = getTournamentColor(key);
+    t.teams.forEach(teamEntry => {
+      const globalTeam = getTeamById(teamEntry.teamId);
+      if (!globalTeam) return;
+      sorted.push({ l: `${globalTeam.name} · ${t.name}`, v: calcPoints(key, teamEntry.w, teamEntry.d), c: globalTeam.isMe ? COLORS.myTeam : color });
+    });
+  });
+  sorted.sort((a, b) => b.v - a.v);
+  if (sorted.length === 0) {
+    chartInstances['chart-points'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-points'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 18 }] },
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { x: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false } }, y: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } } } }
+  });
+}
+
+function renderFormSelector() {
+  const container = document.getElementById('form-selector');
+  container.innerHTML = '';
+  const available = tournamentOrder.filter(k => tournaments[k]?.teams.length > 0);
+  if (!currentFormTournament || !tournaments[currentFormTournament] || tournaments[currentFormTournament].teams.length === 0) {
+    currentFormTournament = available[0] || null;
+  }
+  available.forEach(key => {
+    const t = tournaments[key];
+    const btn = document.createElement('button');
+    btn.textContent = `${t.emoji} ${t.name}`;
+    btn.className = key === currentFormTournament ? 'active' : '';
+    btn.onclick = () => {
+      currentFormTournament = key;
+      document.querySelectorAll('#form-selector button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFormChart();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function renderFormChart() {
+  destroyChart('chart-form');
+  const ctx = document.getElementById('chart-form').getContext('2d');
+  const t = tournaments[currentFormTournament];
+  if (!t || t.teams.length === 0) return;
+  const labels = t.teams.map(tm => { const gt = getTeamById(tm.teamId); return gt ? gt.name : '???'; });
+  chartInstances['chart-form'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Победы', data: t.teams.map(tm => tm.w), backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Ничьи', data: t.teams.map(tm => tm.d), backgroundColor: COLORS.amber, borderRadius: 4, borderSkipped: false },
+      { label: 'Поражения', data: t.teams.map(tm => tm.l), backgroundColor: COLORS.red, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } }, y: { stacked: true, grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true } } }
+  });
+}
+
+function renderTopsChart() {
+  destroyChart('chart-tops');
+  const ctx = document.getElementById('chart-tops').getContext('2d');
+  const labels = [], scorerData = [], assistData = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || (t.topScorer == null && t.topAssist == null)) return;
+    labels.push(t.name);
+    scorerData.push(t.topScorer);
+    assistData.push(t.topAssist);
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-tops'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-tops'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Бомбардиры', data: scorerData, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false },
+      { label: 'Ассистенты', data: assistData, backgroundColor: COLORS.purple, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11, weight: '500' } }, border: { display: false } },
+        y: { 
+          reverse: true, 
+          grid: { color: '#f0f0f0', drawBorder: false }, 
+          ticks: { color: '#737373', font: { size: 11 }, stepSize: 1, callback: v => '#' + v }, 
+          border: { display: false }, 
+          beginAtZero: false,
+          title: { display: true, text: 'Место (меньше = лучше)', color: '#737373', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderGoalsAssistsChart() {
+  destroyChart('chart-goals-assists');
+  const ctx = document.getElementById('chart-goals-assists').getContext('2d');
+  const labels = [], goals = [], assists = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    labels.push(t.name);
+    goals.push(t.summary.goals);
+    assists.push(t.summary.assists);
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-goals-assists'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-goals-assists'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Голы', data: goals, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Ассисты', data: assists, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }
+    ] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderDiffChart() {
+  destroyChart('chart-diff');
+  const ctx = document.getElementById('chart-diff').getContext('2d');
+  const sorted = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.teams.length === 0) return;
+    t.teams.forEach(teamEntry => {
+      const globalTeam = getTeamById(teamEntry.teamId);
+      if (!globalTeam) return;
+      const diff = teamEntry.w - teamEntry.l;
+      sorted.push({ l: globalTeam.name, v: diff, c: globalTeam.isMe ? COLORS.myTeam : (diff > 0 ? COLORS.green : diff < 0 ? COLORS.red : COLORS.slate) });
+    });
+  });
+  sorted.sort((a, b) => b.v - a.v);
+  if (sorted.length === 0) {
+    chartInstances['chart-diff'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-diff'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sorted.map(s => s.l), datasets: [{ data: sorted.map(s => s.v), backgroundColor: sorted.map(s => s.c), borderRadius: 4, borderSkipped: false, barThickness: 16 }] },
+    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 10 }, maxRotation: 60, minRotation: 45 }, border: { display: false } }, y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false } } } }
+  });
+}
+
+function renderProgressChart() {
+  destroyChart('chart-progress');
+  const ctx = document.getElementById('chart-progress').getContext('2d');
+  const labels = [], played = [], total = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    labels.push(t.name);
+    const groupPlayed = my.entry.w + my.entry.d + my.entry.l;
+    const playoffPlayed = t.playoffMatches.filter(m => m.result === 'win' || m.result === 'loss' || m.result === 'draw').length;
+    played.push(groupPlayed + playoffPlayed);
+    total.push(getTotalPossibleMatches(key));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-progress'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-progress'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Сыграно', data: played, backgroundColor: COLORS.green, borderRadius: 4, borderSkipped: false },
+      { label: 'Всего', data: total, backgroundColor: '#e5e5e5', borderRadius: 4, borderSkipped: false }
+    ] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 }, stepSize: 1 }, border: { display: false }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderEfficiencyChart() {
+  destroyChart('chart-efficiency');
+  const ctx = document.getElementById('chart-efficiency').getContext('2d');
+  const labels = [], efficiency = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    labels.push(t.name);
+    const total = my.entry.w + my.entry.d + my.entry.l;
+    const eff = total > 0 ? ((my.entry.w / total) * 100).toFixed(1) : 0;
+    efficiency.push(parseFloat(eff));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-efficiency'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-efficiency'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Эффективность %', data: efficiency, backgroundColor: COLORS.blue, borderRadius: 4, borderSkipped: false }] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 100, title: { display: true, text: 'Процент побед', color: '#737373', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderRatingChart() {
+  destroyChart('chart-rating');
+  const ctx = document.getElementById('chart-rating').getContext('2d');
+  const labels = [], ratings = [], colors = [];
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t || t.summary.rating <= 0) return;
+    labels.push(t.name);
+    ratings.push(t.summary.rating);
+    colors.push(getTournamentColor(key));
+  });
+  if (labels.length === 0) {
+    chartInstances['chart-rating'] = new Chart(ctx, { type: 'bar', data: { labels: ['Нет данных'], datasets: [{ data: [0], backgroundColor: '#e5e5e5' }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-rating'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Рейтинг', data: ratings, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#1a1a1a', font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: '#f0f0f0', drawBorder: false }, ticks: { color: '#737373', font: { size: 11 } }, border: { display: false }, beginAtZero: true, max: 10, title: { display: true, text: 'Рейтинг', color: '#737373', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderAchievementsChart() {
+  destroyChart('chart-achievements');
+  const ctx = document.getElementById('chart-achievements').getContext('2d');
+  const counts = { 'Чемпионство': 0, '2 место': 0, '3-4 место': 0, '5-8 место': 0, '9-16 место': 0, 'Другое': 0 };
+  tournamentOrder.forEach(key => {
+    const a = getAchievement(key);
+    if (!a) return;
+    if (a === 'Чемпионство') counts['Чемпионство']++;
+    else if (a === '2 место') counts['2 место']++;
+    else if (a.startsWith('3-4')) counts['3-4 место']++;
+    else if (a.startsWith('5-8')) counts['5-8 место']++;
+    else if (a.startsWith('9-16')) counts['9-16 место']++;
+    else if (a.includes('место')) counts['Другое']++;
+  });
+  const labels = Object.keys(counts).filter(k => counts[k] > 0);
+  const data = labels.map(k => counts[k]);
+  const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#64748b'];
+  if (labels.length === 0) {
+    chartInstances['chart-achievements'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#e5e5e5'] }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-achievements'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'right' } }
+    }
+  });
+}
+
+function renderPieChart() {
+  destroyChart('chart-pie');
+  const ctx = document.getElementById('chart-pie').getContext('2d');
+  let totalWins = 0, totalDraws = 0, totalLosses = 0;
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    const my = getMyTeamInTournament(key);
+    if (!my) return;
+    totalWins += my.entry.w;
+    totalDraws += my.entry.d;
+    totalLosses += my.entry.l;
+  });
+  if (totalWins === 0 && totalDraws === 0 && totalLosses === 0) {
+    chartInstances['chart-pie'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Нет данных'], datasets: [{ data: [1], backgroundColor: ['#e5e5e5'] }] }, options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } } });
+    return;
+  }
+  chartInstances['chart-pie'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: ['Победы', 'Ничьи', 'Поражения'], datasets: [{ data: [totalWins, totalDraws, totalLosses], backgroundColor: [COLORS.green, COLORS.amber, COLORS.red], borderWidth: 0 }] },
+    options: { 
+      ...chartDefaults, 
+      plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'top' } }
+    }
+  });
+}
+
+function renderAllCharts() {
+  renderSummaryStats();
+  renderPointsChart();
+  renderFormSelector();
+  renderFormChart();
+  renderTopsChart();
+  renderGoalsAssistsChart();
+  renderDiffChart();
+  renderProgressChart();
+  renderEfficiencyChart();
+  renderRatingChart();
+  renderAchievementsChart();
+  renderPieChart();
+}
+
+// ============ INIT ============
+const loaded = loadFromLocalStorage();
+if (!loaded) {
+  initDefaults();
+  seasons = [{
+    year: 2025,
+    tournamentOrder: [...tournamentOrder],
+    tournaments: JSON.parse(JSON.stringify(tournaments)),
+    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+  }];
+  currentSeasonIdx = 0;
+}
+fullRender();
+saveToLocalStorage();
+
+document.getElementById('tournament-modal').addEventListener('click', (e) => { if (e.target.id === 'tournament-modal') closeModal(); });
+document.getElementById('data-modal').addEventListener('click', (e) => { if (e.target.id === 'data-modal') closeDataModal(); });
+document.getElementById('new-season-modal').addEventListener('click', (e) => { if (e.target.id === 'new-season-modal') closeNewSeasonModal(); });
+document.getElementById('flag-modal').addEventListener('click', (e) => { if (e.target.id === 'flag-modal') closeFlagModal(); });
+document.getElementById('presets-modal').addEventListener('click', (e) => { if (e.target.id === 'presets-modal') closePresetsModal(); });
+window.addEventListener('beforeunload', saveToLocalStorage);
+</script>
+</body>
+</html>
+
