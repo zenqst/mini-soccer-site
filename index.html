@@ -810,10 +810,62 @@ function getTeamById(teamId) {
   return globalTeams.find(t => t.id === teamId);
 }
 
-function getSortedTeams() {
+function getSortedTeams(tournamentKey) {
+  const t = tournamentKey ? tournaments[tournamentKey] : null;
+  const isInternational = t ? t.isInternational : false;
+  const tournamentEmoji = t ? t.emoji : '';
+
+  const teamsInAnyTournament = new Set();
+  tournamentOrder.forEach(k => {
+    (tournaments[k].teams || []).forEach(te => teamsInAnyTournament.add(te.teamId));
+  });
+
+  const countryCountInTournament = {};
+  if (t) {
+    t.teams.forEach(te => {
+      const gt = getTeamById(te.teamId);
+      if (gt && gt.flag) countryCountInTournament[gt.flag] = (countryCountInTournament[gt.flag] || 0) + 1;
+    });
+  }
+
+  const countryTotalCount = {};
+  tournamentOrder.forEach(k => {
+    (tournaments[k].teams || []).forEach(te => {
+      const gt = getTeamById(te.teamId);
+      if (gt && gt.flag) countryTotalCount[gt.flag] = (countryTotalCount[gt.flag] || 0) + 1;
+    });
+  });
+
   return [...globalTeams].sort((a, b) => {
     if (a.isMe && !b.isMe) return -1;
     if (!a.isMe && b.isMe) return 1;
+
+    const aNew = !teamsInAnyTournament.has(a.id);
+    const bNew = !teamsInAnyTournament.has(b.id);
+    if (aNew && !bNew) return -1;
+    if (!aNew && bNew) return 1;
+
+    if (!isInternational && tournamentEmoji) {
+      const aMatch = a.flag === tournamentEmoji;
+      const bMatch = b.flag === tournamentEmoji;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+    }
+
+    if (isInternational) {
+      const aInThis = countryCountInTournament[a.flag] || 0;
+      const bInThis = countryCountInTournament[b.flag] || 0;
+      const aTotal = countryTotalCount[a.flag] || 0;
+      const bTotal = countryTotalCount[b.flag] || 0;
+
+      if (aInThis === 0 && bInThis > 0) return -1;
+      if (aInThis > 0 && bInThis === 0) return 1;
+
+      if (aTotal !== bTotal) return bTotal - aTotal;
+
+      return a.name.localeCompare(b.name, 'ru');
+    }
+
     return a.name.localeCompare(b.name, 'ru');
   });
 }
@@ -1370,7 +1422,7 @@ function renderTeams(key) {
       <div style="display:flex; gap:8px; align-items:center;">
         <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
           <option value="">Выбери команду</option>
-          ${getSortedTeams().map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
         </select>
         ${badge}
         <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
@@ -1528,7 +1580,7 @@ function updateTeamSelects(key) {
       const currentVal = select.value;
       select.innerHTML = `
         <option value="">Выбери команду</option>
-        ${getSortedTeams().map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+        ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
       `;
     }
   });
@@ -1610,7 +1662,7 @@ function renderPlayoffMatches(key) {
           <span class="field-label">Соперник</span>
           <select data-idx="${idx}" data-field="opponentTeamId" data-focus-id="po-${key}-${idx}-opp">
             <option value="">— выбери —</option>
-            ${getSortedTeams().filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
+            ${getSortedTeams(key).filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
           </select>
         </div>
         <div class="field-group">
