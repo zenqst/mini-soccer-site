@@ -637,9 +637,10 @@ function renderCareer() {
   }
 
   if (seasonHistory.length > 0) {
+    const sortedSeasons = [...seasonHistory].sort((a, b) => Number(b.year) - Number(a.year));
     html += `<div class="career-section">
       <div class="career-section-title">📅 История сезонов</div>
-      ${seasonHistory.map(s => `
+      ${sortedSeasons.map(s => `
         <div class="career-row">
           <div class="info">
             <div class="name">${s.year}</div>
@@ -677,8 +678,9 @@ function renderCareer() {
 
   container.innerHTML = html;
 
-  if (seasonHistory.length > 1) renderCareerComparisonChart(seasonHistory);
-  if (seasonHistory.some(s => s.rating)) renderCareerRatingChart(seasonHistory);
+  const sortedHistory = [...seasonHistory].sort((a, b) => Number(a.year) - Number(b.year));
+  if (seasonHistory.length > 1) renderCareerComparisonChart(sortedHistory);
+  if (seasonHistory.some(s => s.rating)) renderCareerRatingChart(sortedHistory);
   if (totalMatches > 0) renderCareerPieChart(totalWins, totalDraws, totalLosses);
 }
 
