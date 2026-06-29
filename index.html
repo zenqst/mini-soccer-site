@@ -586,7 +586,7 @@ function saveToCookies() {
       currentSeasonIdx
     };
     const json = JSON.stringify(data);
-    const chunkSize = 3500;
+    const chunkSize = 2000;
     const chunks = Math.ceil(json.length / chunkSize);
     setCookie('tournamentApp_c0', chunks.toString(), 365);
     for (let i = 0; i < chunks; i++) {
@@ -982,7 +982,7 @@ function migrateFlags(data) {
       if (t.emoji && isFlagBroken(t.emoji)) {
         const nameLower = (t.name || '').toLowerCase();
         if (nameLower.includes('serie') || nameLower.includes('серия')) t.emoji = '🇮🇹';
-        else if (nameLower.includes('рпл') || nameLower.includes('рпл')) t.emoji = '🇷🇺';
+        else if (nameLower.includes('рпл') || nameLower.includes('rpl')) t.emoji = '🇷🇺';
         else if (nameLower.includes('лига чемпионов')) t.emoji = '🏆';
         else if (nameLower.includes('лига европы')) t.emoji = '🏆';
         else if (nameLower.includes('европ')) t.emoji = '🇪🇺';
@@ -1185,7 +1185,7 @@ function renderSeasonsList() {
     item.innerHTML = `
       <span style="font-size:18px;">📅</span>
       <div style="flex:1; min-width:150px;">
-        <div class="name">${s.year} ${isCurrent ? '<span class="my-team-badge">текущий</span>' : ''}</div>
+        <div class="name">${escapeHtml(String(s.year))} ${isCurrent ? '<span class="my-team-badge">текущий</span>' : ''}</div>
         <div class="meta">${tCount} турниров · ${teamCount} команд</div>
       </div>
       ${!isCurrent ? `<button class="btn btn-sm" onclick="switchSeason(${idx})">Открыть</button>` : ''}
@@ -1248,7 +1248,7 @@ function renderPanels() {
       <div class="card">
         <div class="card-header">
           <div class="card-title-wrap">
-            <div class="card-title">${t.emoji} ${escapeHtml(t.name)}</div>
+            <div class="card-title">${escapeHtml(t.emoji)} ${escapeHtml(t.name)}</div>
             <button class="icon-btn" onclick="openTournamentModal('${key}')" title="Настройки турнира">⚙️</button>
             ${t.hasPlayoff ? `<button class="icon-btn collapse-btn" onclick="toggleGroupCollapse('${key}')" title="Свернуть/развернуть группу" id="collapse-btn-${key}"></button>` : ''}
           </div>
@@ -1377,7 +1377,8 @@ function renderTeams(key) {
     `;
     
     row.querySelectorAll('input, select').forEach(input => {
-      input.addEventListener('input', (e) => {
+      const isSelect = input.tagName === 'SELECT';
+      input.addEventListener(isSelect ? 'change' : 'input', (e) => {
         const field = e.target.dataset.field;
         const entry = tournaments[key].teams[idx];
         if (field === 'teamId') {
@@ -1441,8 +1442,9 @@ function renderGlobalTeams() {
     `;
     
     item.querySelectorAll('input').forEach(input => {
-      input.addEventListener('input', (e) => {
-        const field = e.target.dataset.field;
+      const field = input.dataset.field;
+      const eventType = (field === 'isMe') ? 'change' : 'input';
+      input.addEventListener(eventType, (e) => {
         const i = parseInt(e.target.dataset.idx);
         if (field === 'name') {
           globalTeams[i].name = e.target.value;
@@ -1835,7 +1837,7 @@ function renderSettingsPanel() {
     const item = document.createElement('div');
     item.className = 'tournament-list-item';
     item.innerHTML = `
-      <span style="font-size:18px;">${t.emoji}</span>
+      <span style="font-size:18px;">${escapeHtml(t.emoji)}</span>
       <div style="flex:1; min-width:150px;">
         <div class="name">${escapeHtml(t.name)} ${t.isInternational ? '<span style="font-size:10px; color:var(--text-muted);">🌍</span>' : ''}</div>
         <div class="meta">${t.teams.length} команд · ${t.rounds} матчей · ${t.hasPlayoff ? 'плей-офф' : 'лига'}${t.displayLimit > 0 ? ` · топ-${t.displayLimit}` : ''}</div>
@@ -1939,13 +1941,13 @@ function downloadExportFile() {
     }, 1000);
     showToast('✅ Файл скачивается');
   } catch (err) {
-    showToast('️ Ошибка: ' + err.message);
+    showToast('⚠️ Ошибка: ' + err.message);
   }
 }
 
 function importFromText() {
   const text = document.getElementById('import-textarea').value.trim();
-  if (!text) { showToast('️ Вставь JSON'); return; }
+  if (!text) { showToast('⚠️ Вставь JSON'); return; }
   doImport(text);
 }
 
@@ -2112,7 +2114,8 @@ function generate() {
       const avgRating = (seasonTotal.ratingSum / seasonTotal.ratingCount).toFixed(1);
       seasonParts.push(`${avgRating} рейтинга`);
     }
-    blocks.push(`Итог сезона: ${seasonParts.join(', ')}`);
+    const seasonYear = seasons[currentSeasonIdx]?.year || '';
+    blocks.push(`Итог сезона${seasonYear ? ' ' + seasonYear : ''}: ${seasonParts.join(', ')}`);
   }
   
   const output = document.getElementById('output');
@@ -2166,7 +2169,7 @@ function resetAll() {
   fullRender();
   saveToLocalStorage();
   document.getElementById('output').innerHTML = '<div class="empty">Нажми «Сгенерировать»</div>';
-  switchTab(tournamentOrder[0]);
+  switchTab('settings');
 }
 
 function showGuide() {
