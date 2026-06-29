@@ -1861,7 +1861,7 @@ function renderSettingsPanel() {
     const item = document.createElement('div');
     item.className = 'tournament-list-item';
     item.innerHTML = `
-      <span style="font-size:18px;">${escapeHtml(t.emoji)}</span>
+      <span style="font-size:18px; width:28px; text-align:center; flex-shrink:0; display:inline-block;">${escapeHtml(t.emoji)}</span>
       <div style="flex:1; min-width:150px;">
         <div class="name">${escapeHtml(t.name)} ${t.isInternational ? '<span style="font-size:10px; color:var(--text-muted);">🌍</span>' : ''}</div>
         <div class="meta">${t.teams.length} команд · ${t.rounds} матчей · ${t.hasPlayoff ? 'плей-офф' : 'лига'}${t.displayLimit > 0 ? ` · топ-${t.displayLimit}` : ''}</div>
