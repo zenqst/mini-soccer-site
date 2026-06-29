@@ -292,7 +292,7 @@ function renderGlobalTeams() {
   const visible = [];
   const hidden = [];
   globalTeams.forEach((team, idx) => {
-    if (team.visible === false) hidden.push({ team, idx });
+    if (team.visible === false || team.visible === 0 || team.visible === 'false') hidden.push({ team, idx });
     else visible.push({ team, idx });
   });
   visible.sort((a, b) => {

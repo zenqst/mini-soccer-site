@@ -442,7 +442,6 @@ function migrateFlags(data) {
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
       if (t.visible === undefined) t.visible = true;
-      if (t.visible === 0) t.visible = true;
       if (!t.flag || t.flag === '') return;
       if (teamFlagByName[t.name]) {
         t.flag = teamFlagByName[t.name];
