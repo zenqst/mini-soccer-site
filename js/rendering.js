@@ -752,6 +752,7 @@ function saveTournamentSettings() {
       t.customFormat = { '1/8': 2, '1/4': 2, '1/2': 2, 'Final': 1 };
     }
   }
+  syncTournamentConfig(currentModalKey, t);
   renderTabs();
   renderPanels();
   tournamentOrder.forEach(k => { renderTopStats(k); renderTeams(k); });
@@ -767,6 +768,11 @@ function deleteCurrentTournament() {
   const key = currentModalKey;
   delete tournaments[key];
   tournamentOrder = tournamentOrder.filter(k => k !== key);
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    delete s.tournaments[key];
+    s.tournamentOrder = s.tournamentOrder.filter(k => k !== key);
+  });
   closeModal();
   renderTabs();
   renderPanels();
@@ -804,6 +810,15 @@ function addTournament() {
   const key = 'custom_' + Date.now() + '_' + tournamentCounter;
   tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
   tournamentOrder.push(key);
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    if (!s.tournaments[key]) {
+      s.tournaments[key] = emptyTournament('🏆', 'Новый турнир', 10);
+    }
+    if (!s.tournamentOrder.includes(key)) {
+      s.tournamentOrder.push(key);
+    }
+  });
   renderTabs();
   renderPanels();
   renderTopStats(key);

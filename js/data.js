@@ -147,6 +147,19 @@ function applyPreset(idx) {
   tournaments[key].pointsPerDraw = p.ptsDraw;
   tournaments[key].isInternational = p.international;
   tournamentOrder.push(key);
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    if (!s.tournaments[key]) {
+      s.tournaments[key] = emptyTournament(p.emoji, p.name, p.rounds, p.hasPlayoff, p.format);
+      s.tournaments[key].customFormat = {...p.customFormat};
+      s.tournaments[key].pointsPerWin = p.ptsWin;
+      s.tournaments[key].pointsPerDraw = p.ptsDraw;
+      s.tournaments[key].isInternational = p.international;
+    }
+    if (!s.tournamentOrder.includes(key)) {
+      s.tournamentOrder.push(key);
+    }
+  });
   closePresetsModal();
   renderTabs();
   renderPanels();
@@ -175,6 +188,8 @@ const COLORS = {
 
 const TOURNAMENT_COLORS = ['#ef4444', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 
+const TOURNAMENT_CONFIG_KEYS = ['emoji', 'name', 'rounds', 'displayLimit', 'pointsPerWin', 'pointsPerDraw', 'showH2H', 'hasPlayoff', 'playoffFormat', 'isInternational', 'customFormat'];
+
 function emptyTournament(emoji, name, rounds, hasPlayoff = false, playoffFormat = 'single') {
   return {
     emoji, name, rounds, displayLimit: 0,
@@ -186,6 +201,28 @@ function emptyTournament(emoji, name, rounds, hasPlayoff = false, playoffFormat 
     groupCollapsed: undefined, playoffCollapsed: undefined,
     summary: { goals: 0, assists: 0, mvp: 0, accuracy: 0, rating: 0 }
   };
+}
+
+function syncTournamentConfig(srcKey, config) {
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    if (s.tournaments[srcKey]) {
+      TOURNAMENT_CONFIG_KEYS.forEach(k => { s.tournaments[srcKey][k] = JSON.parse(JSON.stringify(config[k])); });
+    }
+  });
+}
+
+function syncTournamentOrder() {
+  seasons.forEach((s, idx) => {
+    if (idx === currentSeasonIdx) return;
+    s.tournamentOrder = [...tournamentOrder];
+    tournamentOrder.forEach(key => {
+      if (!s.tournaments[key]) {
+        s.tournaments[key] = emptyTournament(tournaments[key].emoji, tournaments[key].name, tournaments[key].rounds, tournaments[key].hasPlayoff, tournaments[key].playoffFormat);
+        TOURNAMENT_CONFIG_KEYS.forEach(k => { s.tournaments[key][k] = JSON.parse(JSON.stringify(tournaments[key][k])); });
+      }
+    });
+  });
 }
 
 function initDefaults() {
@@ -564,16 +601,25 @@ function createNewSeason() {
   
   syncCurrentSeason();
   const copiedTeams = JSON.parse(JSON.stringify(globalTeams)).map(t => ({ ...t, visible: false, isMe: false }));
+  const newTournaments = {};
+  tournamentOrder.forEach(key => {
+    const src = tournaments[key];
+    newTournaments[key] = emptyTournament(src.emoji, src.name, src.rounds, src.hasPlayoff, src.playoffFormat);
+    TOURNAMENT_CONFIG_KEYS.forEach(k => { newTournaments[key][k] = JSON.parse(JSON.stringify(src[k])); });
+  });
   const newSeason = { 
     year, 
-    tournamentOrder: [], 
-    tournaments: {}, 
+    tournamentOrder: [...tournamentOrder], 
+    tournaments: newTournaments, 
     globalTeams: copiedTeams
   };
   seasons.push(newSeason);
   currentSeasonIdx = seasons.length - 1;
   Object.keys(tournaments).forEach(k => delete tournaments[k]);
-  tournamentOrder = [];
+  tournamentOrder = [...newSeason.tournamentOrder];
+  for (const [k, v] of Object.entries(newSeason.tournaments)) {
+    tournaments[k] = JSON.parse(JSON.stringify(v));
+  }
   globalTeams = JSON.parse(JSON.stringify(newSeason.globalTeams));
   
   closeNewSeasonModal();
