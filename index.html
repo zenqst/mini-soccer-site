@@ -426,7 +426,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.4.1</span>
+    <span>Генератор турнирных таблиц v2.5.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -494,7 +494,7 @@
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="field-group"><span class="field-label">Эмодзи</span><input type="text" id="modal-emoji" maxlength="4"></div>
+      <div class="field-group"><span class="field-label">Эмодзи</span><select id="modal-emoji"></select></div>
       <div class="field-group"><span class="field-label">Название турнира</span><input type="text" id="modal-name"></div>
       <div class="field-group">
         <span class="field-label">Количество матчей в группе</span>
@@ -743,21 +743,25 @@ function selectFlag(flag) {
 // ============ ПРЕСЕТЫ ТУРНИРОВ ============
 const TOURNAMENT_PRESETS = [
   { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏴󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏴󠁧󠁢󠁥󠁧󠁿', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇷🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇵🇹', name: 'Примейра', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇳🇱', name: 'Эредивизие', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇧🇷', name: 'Серия А (Бразилия)', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🌍', name: 'Чемпионат Мира (клубы)', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🇪🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇪🇸', name: 'Кубок Испании', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🏆', name: 'Кубок (страна)', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
   { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌟', name: 'Клубный ЧМ', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 }
+  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
+  { emoji: '🇪🇺', name: 'Квалификация ЧЕ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 }
 ];
 
 function openPresetsModal() {
@@ -861,7 +865,7 @@ function getSortedTeams(tournamentKey) {
     });
   });
 
-  return [...globalTeams].sort((a, b) => {
+  return [...globalTeams].filter(t => t.visible !== false).sort((a, b) => {
     if (a.isMe && !b.isMe) return -1;
     if (!a.isMe && b.isMe) return 1;
 
@@ -909,6 +913,23 @@ function calcPoints(key, w, d) {
   const t = tournaments[key];
   if (!t) return 0;
   return w * (t.pointsPerWin || 3) + d * (t.pointsPerDraw || 1);
+}
+
+function calcAutoRating(key) {
+  const t = tournaments[key];
+  const my = getMyTeamInTournament(key);
+  if (!my) return 0;
+  const s = t.summary || {};
+  const total = my.entry.w + my.entry.d + my.entry.l;
+  if (total === 0) return 0;
+  let rating = 5.0;
+  rating += (s.goals || 0) * 0.15;
+  rating += (s.assists || 0) * 0.1;
+  rating += (s.mvp || 0) * 0.3;
+  rating += (my.entry.w / total) * 2.0;
+  const achievement = getAchievement(key);
+  if (achievement === 'Чемпионство') rating += 0.5;
+  return Math.round(Math.min(10, Math.max(1, rating)) * 10) / 10;
 }
 
 function getNextRound(key) {
@@ -1364,6 +1385,15 @@ function renderPanels() {
   });
 }
 
+function autoRate(key) {
+  const t = tournaments[key];
+  t.summary.rating = calcAutoRating(key);
+  renderSummary(key);
+  renderTopStats(key);
+  debouncedSave();
+  showToast(`Рейтинг: ${t.summary.rating}`);
+}
+
 function toggleGroupCollapse(key) {
   const t = tournaments[key];
   t.groupCollapsed = !t.groupCollapsed;
@@ -1524,7 +1554,7 @@ function removeTeam(key, idx) {
 }
 
 function addGlobalTeam() {
-  globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '' });
+  globalTeams.push({ id: 'team_' + Date.now(), name: '', isMe: false, flag: '', visible: true });
   renderGlobalTeams();
   tournamentOrder.forEach(k => { renderTeams(k); });
   debouncedSave();
@@ -1564,6 +1594,7 @@ function renderGlobalTeams() {
         <input type="checkbox" ${team.isMe ? 'checked' : ''} data-field="isMe" data-idx="${idx}" data-focus-id="gteam-${idx}-isme">
         Ваша
       </label>
+      <button class="icon-btn" onclick="toggleTeamVisible(${idx})" title="${team.visible !== false ? 'Скрыть из выпадающих списков' : 'Показать в выпадающих списках'}" style="font-size:16px;${team.visible === false ? 'opacity:0.3;' : ''}">👁️</button>
       <button class="btn btn-danger btn-sm" onclick="removeGlobalTeam(${idx})">✕</button>
     `;
     
@@ -1589,6 +1620,13 @@ function renderGlobalTeams() {
   });
   
   restoreFocus(focusState, container);
+}
+
+function toggleTeamVisible(idx) {
+  globalTeams[idx].visible = globalTeams[idx].visible === false ? true : false;
+  renderGlobalTeams();
+  tournamentOrder.forEach(k => renderTeams(k));
+  debouncedSave();
 }
 
 function openFlagForGlobalTeam(idx) {
@@ -1834,7 +1872,7 @@ function renderSummary(key) {
         <div class="field-group"><span class="field-label">Ассисты</span><input type="text" inputmode="numeric" value="${s.assists}" data-field="assists" data-focus-id="sum-${key}-assists"></div>
         <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" value="${s.mvp}" data-field="mvp" data-focus-id="sum-${key}-mvp"></div>
         <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" value="${s.accuracy}" data-field="accuracy" data-focus-id="sum-${key}-accuracy"></div>
-        <div class="field-group"><span class="field-label">Рейтинг</span><input type="text" inputmode="decimal" value="${s.rating}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating"></div>
+        <div class="field-group"><span class="field-label">Рейтинг</span><div style="display:flex; gap:4px;"><input type="text" inputmode="decimal" value="${s.rating}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating" style="flex:1;"><button class="btn btn-sm" onclick="autoRate('${key}')" title="Рассчитать автоматически">🎲</button></div></div>
       </div>
     </div>
   `;
@@ -1860,10 +1898,27 @@ function renderSummary(key) {
 
 let currentModalKey = null;
 
+const TOURNAMENT_EMOJIS = [
+  { v: '🏆', l: '🏆 Кубок' }, { v: '🌍', l: '🌍 Мир/Квалификация' }, { v: '🌎', l: '🌎 Америка' },
+  { v: '🇪🇺', l: '🇪🇺 Европа' }, { v: '🇪🇸', l: '🇪🇸 Испания' }, { v: '🏴󠁧󠁢󠁥󠁧󠁿', l: '🏴 Англия' },
+  { v: '🇮🇹', l: '🇮🇹 Италия' }, { v: '🇩🇪', l: '🇩🇪 Германия' }, { v: '🇫🇷', l: '🇫🇷 Франция' },
+  { v: '🇷🇺', l: '🇷🇺 Россия' }, { v: '🇵🇹', l: '🇵🇹 Португалия' }, { v: '🇳🇱', l: '🇳🇱 Нидерланды' },
+  { v: '🇧🇷', l: '🇧🇷 Бразилия' }, { v: '🇦🇷', l: '🇦🇷 Аргентина' }, { v: '🇨🇱', l: '🇨🇱 Чили' },
+  { v: '🇨🇴', l: '🇨🇴 Колумбия' }, { v: '🇲🇽', l: '🇲🇽 Мексика' }, { v: '🇺🇸', l: '🇺🇸 США' },
+  { v: '🇯🇵', l: '🇯🇵 Япония' }, { v: '🇰🇷', l: '🇰🇷 Южная Корея' }, { v: '🇨🇳', l: '🇨🇳 Китай' },
+  { v: '🇹🇷', l: '🇹🇷 Турция' }, { v: '🇺🇦', l: '🇺🇦 Украина' }, { v: '🇵🇱', l: '🇵🇱 Польша' },
+  { v: '🇧🇪', l: '🇧🇪 Бельгия' }, { v: '🇨🇭', l: '🇨🇭 Швейцария' }, { v: '🇦🇹', l: '🇦🇹 Австрия' },
+  { v: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', l: '🏴 Шотландия' }, { v: '🏴󠁧󠁢󠁷󠁬󠁿', l: '🏴 Уэльс' }, { v: '🇮🇪', l: '🇮🇪 Ирландия' },
+  { v: '🇸🇪', l: '🇸🇪 Швеция' }, { v: '🇩🇰', l: '🇩🇰 Дания' }, { v: '🇳🇴', l: '🇳🇴 Норвегия' },
+  { v: '🇨🇿', l: '🇨🇿 Чехия' }, { v: '🇷🇸', l: '🇷🇸 Сербия' }, { v: '🇭🇷', l: '🇭🇷 Хорватия' },
+  { v: '🇷🇴', l: '🇷🇴 Румыния' }, { v: '🇬🇷', l: '🇬🇷 Греция' }, { v: '🇭🇺', l: '🇭🇺 Венгрия' }
+];
+
 function openTournamentModal(key) {
   currentModalKey = key;
   const t = tournaments[key];
-  document.getElementById('modal-emoji').value = t.emoji;
+  const emojiSelect = document.getElementById('modal-emoji');
+  emojiSelect.innerHTML = TOURNAMENT_EMOJIS.map(e => `<option value="${e.v}" ${e.v === t.emoji ? 'selected' : ''}>${e.l}</option>`).join('') + `<option value="📝" ${!TOURNAMENT_EMOJIS.find(e => e.v === t.emoji) ? 'selected' : ''}>📝 Другое</option>`;
   document.getElementById('modal-name').value = t.name;
   document.getElementById('modal-rounds').value = t.rounds;
   document.getElementById('modal-limit').value = t.displayLimit || '';
@@ -2810,7 +2865,7 @@ function renderCareer() {
   const h2hList = Object.values(h2h).filter(h => h.w + h.d + h.l > 0).sort((a, b) => (b.w + b.d * 0.5) - (a.w + a.d * 0.5)).slice(0, 15);
 
   const formatSeasons = (seasons) => {
-    if (seasons.length <= 2) return seasons.join(' и ');
+    if (seasons.length === 1) return String(seasons[0]);
     return `${seasons[0]}–${seasons[seasons.length - 1]}`;
   };
 
