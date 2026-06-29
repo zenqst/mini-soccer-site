@@ -334,6 +334,23 @@ function isTournamentFinished(key) {
   return lastMatch.round === 'Final' || lastMatch.result === 'loss';
 }
 
+function isTournamentFinishedForSeason(seasonData, key) {
+  const t = (seasonData.tournaments || {})[key];
+  if (!t) return false;
+  const myEntry = (t.teams || []).find(te => {
+    const gt = (seasonData.globalTeams || []).find(g => g.id === te.teamId);
+    return gt && gt.isMe;
+  });
+  if (!myEntry) return false;
+  const groupMatches = myEntry.w + myEntry.d + myEntry.l;
+  if (!t.hasPlayoff) return groupMatches >= t.rounds;
+  if (!t.reachedPlayoff) return groupMatches >= t.rounds;
+  if (t.playoffMatches.length === 0) return false;
+  const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+  if (lastMatch.result !== 'win' && lastMatch.result !== 'loss') return false;
+  return lastMatch.round === 'Final' || lastMatch.result === 'loss';
+}
+
 function getAchievement(key) {
   const t = tournaments[key];
   const my = getMyTeamInTournament(key);
