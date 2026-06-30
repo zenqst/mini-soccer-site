@@ -32,24 +32,6 @@ function deleteCookie(name) {
   document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
 }
 
-function saveToCookies() {
-  try {
-    syncCurrentSeason();
-    const data = {
-      version: 4,
-      seasons: JSON.parse(JSON.stringify(seasons)),
-      currentSeasonIdx
-    };
-    const json = JSON.stringify(data);
-    const chunkSize = 2000;
-    const chunks = Math.ceil(json.length / chunkSize);
-    setCookie('tournamentApp_c0', chunks.toString(), 365);
-    for (let i = 0; i < chunks; i++) {
-      setCookie('tournamentApp_c' + (i + 1), json.substring(i * chunkSize, (i + 1) * chunkSize), 365);
-    }
-  } catch (e) { console.warn('Cookie save failed', e); }
-}
-
 function loadFromCookies() {
   try {
     const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
@@ -62,5 +44,68 @@ function loadFromCookies() {
     }
     return JSON.parse(json);
   } catch (e) { console.warn('Cookie load failed', e); return null; }
+}
+
+function clearCookieChunks() {
+  const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
+  for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
+}
+
+// ============ INDEXED DB ============
+const DB_NAME = 'tournamentAppDB';
+const DB_VERSION = 1;
+const DB_STORE = 'data';
+const DB_KEY = 'main';
+
+function dbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbSave(data) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(data, DB_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbLoad() {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(DB_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbClear() {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function migrateFromCookies() {
+  const cookieData = loadFromCookies();
+  if (!cookieData || !cookieData.seasons || cookieData.seasons.length === 0) {
+    return null;
+  }
+  await dbSave(cookieData);
+  clearCookieChunks();
+  localStorage.removeItem('tournamentApp_v4');
+  localStorage.removeItem('tournamentApp_v3');
+  localStorage.removeItem('tournamentApp_v2');
+  return cookieData;
 }
 

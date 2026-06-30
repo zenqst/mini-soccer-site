@@ -1015,7 +1015,7 @@ function saveQuickSeason() {
   
   closeQuickSeasonModal();
   fullRender();
-  saveToLocalStorage();
+  saveToDB();
   showToast(`✅ Быстрый сезон ${year} создан`);
 }
 
@@ -1148,7 +1148,7 @@ function doImport(text) {
     globalTeams.forEach(t => { if (!t.flag) t.flag = ''; });
     
     fullRender();
-    saveToLocalStorage();
+    saveToDB();
     closeDataModal();
     showToast('✅ Данные импортированы');
   } catch (err) {
@@ -1284,11 +1284,11 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-function resetAll() {
+async function resetAll() {
   if (!confirm('Сбросить все данные и сезоны?')) return;
+  try { await dbClear(); } catch(e) {}
   localStorage.removeItem('tournamentApp_v4');
-  const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
-  for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
+  clearCookieChunks();
   seasons = [];
   currentSeasonIdx = 0;
   initDefaults();
@@ -1300,7 +1300,7 @@ function resetAll() {
   }];
   currentSeasonIdx = 0;
   fullRender();
-  saveToLocalStorage();
+  await saveToDB();
   document.getElementById('output').innerHTML = '<div class="empty">Нажми «Сгенерировать»</div>';
   switchTab('settings');
 }

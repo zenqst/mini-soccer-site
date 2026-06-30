@@ -423,7 +423,7 @@ function restoreFocus(state, container) {
   }
 }
 
-// ============ LOCAL STORAGE ============
+// ============ SYNC & SAVE ============
 function buildCurrentSeasonData() {
   return {
     tournamentOrder: [...tournamentOrder],
@@ -440,22 +440,68 @@ function syncCurrentSeason() {
   seasons[currentSeasonIdx].globalTeams = data.globalTeams;
 }
 
-function saveToLocalStorage() {
+// ============ INDEXED DB ============
+function applyData(data) {
+  if (!data.seasons || data.seasons.length === 0) return false;
+  seasons = data.seasons;
+  currentSeasonIdx = data.currentSeasonIdx ?? 0;
+  if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
+  const s = seasons[currentSeasonIdx];
+  tournamentOrder = [...(s.tournamentOrder || [])];
+  Object.keys(tournaments).forEach(k => delete tournaments[k]);
+  for (const [k, v] of Object.entries(s.tournaments || {})) {
+    tournaments[k] = JSON.parse(JSON.stringify(v));
+  }
+  globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  return true;
+}
+
+async function saveToDB() {
   try {
     syncCurrentSeason();
     const data = {
-      version: 4,
+      version: 5,
       seasons: JSON.parse(JSON.stringify(seasons)),
       currentSeasonIdx
     };
-    localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
-    saveToCookies();
-  } catch (e) { console.warn('Save failed', e); }
+    await dbSave(data);
+  } catch (e) { console.warn('IndexedDB save failed', e); }
 }
 
 function debouncedSave() {
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToLocalStorage, 800);
+  saveTimer = setTimeout(saveToDB, 800);
+}
+
+async function loadFromLocalStorageLegacy() {
+  try {
+    for (const vKey of ['tournamentApp_v3', 'tournamentApp_v2']) {
+      const raw = localStorage.getItem(vKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.version = 4;
+        if (data.seasons) {
+          data.seasons.forEach(s => {
+            (s.globalTeams || []).forEach(t => { if (!t.flag) t.flag = ''; });
+            Object.values(s.tournaments || {}).forEach(t => { if (t.isInternational === undefined) t.isInternational = false; });
+          });
+        }
+        localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
+        localStorage.removeItem(vKey);
+        break;
+      }
+    }
+
+    let raw = localStorage.getItem('tournamentApp_v4');
+    if (!raw) return false;
+    let data = JSON.parse(raw);
+    data = migrateFlags(data);
+    if (!data.seasons || data.seasons.length === 0) return false;
+    return data;
+  } catch (e) {
+    console.warn('Legacy load failed', e);
+    return false;
+  }
 }
 
 function migrateFlags(data) {
@@ -500,55 +546,6 @@ function migrateFlags(data) {
   return data;
 }
 
-function loadFromLocalStorage() {
-  try {
-    for (const vKey of ['tournamentApp_v3', 'tournamentApp_v2']) {
-      const raw = localStorage.getItem(vKey);
-      if (raw) {
-        const data = JSON.parse(raw);
-        data.version = 4;
-        if (data.seasons) {
-          data.seasons.forEach(s => {
-            (s.globalTeams || []).forEach(t => { if (!t.flag) t.flag = ''; });
-            Object.values(s.tournaments || {}).forEach(t => { if (t.isInternational === undefined) t.isInternational = false; });
-          });
-        }
-        localStorage.setItem('tournamentApp_v4', JSON.stringify(data));
-        localStorage.removeItem(vKey);
-        break;
-      }
-    }
-    
-    let raw = localStorage.getItem('tournamentApp_v4');
-    if (!raw) {
-      const cookieData = loadFromCookies();
-      if (cookieData && cookieData.seasons && cookieData.seasons.length > 0) {
-        raw = JSON.stringify(cookieData);
-        localStorage.setItem('tournamentApp_v4', raw);
-      }
-    }
-    if (!raw) return false;
-    let data = JSON.parse(raw);
-    data = migrateFlags(data);
-    try { localStorage.setItem('tournamentApp_v4', JSON.stringify(data)); } catch(e) {}
-    if (!data.seasons || data.seasons.length === 0) return false;
-    seasons = data.seasons;
-    currentSeasonIdx = data.currentSeasonIdx ?? 0;
-    if (currentSeasonIdx < 0 || currentSeasonIdx >= seasons.length) currentSeasonIdx = 0;
-    const s = seasons[currentSeasonIdx];
-    tournamentOrder = [...(s.tournamentOrder || [])];
-    Object.keys(tournaments).forEach(k => delete tournaments[k]);
-    for (const [k, v] of Object.entries(s.tournaments || {})) {
-      tournaments[k] = JSON.parse(JSON.stringify(v));
-    }
-    globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
-    return true;
-  } catch (e) {
-    console.warn('Load failed', e);
-    return false;
-  }
-}
-
 // ============ SEASONS ============
 function updateSeasonSelector() {
   const selector = document.getElementById('season-selector');
@@ -577,7 +574,7 @@ function switchSeason(idx) {
   }
   globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
   fullRender();
-  saveToLocalStorage();
+  saveToDB();
   showToast(`Переключено на сезон ${s.year}`);
 }
 
@@ -623,7 +620,7 @@ function createNewSeason() {
   
   closeNewSeasonModal();
   fullRender();
-  saveToLocalStorage();
+  saveToDB();
   switchTab('settings');
   showToast(`✅ Создан сезон ${year}`);
 }
@@ -672,7 +669,7 @@ function deleteSeason(idx) {
     globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
   }
   fullRender();
-  saveToLocalStorage();
+  saveToDB();
   showToast('Сезон удалён');
 }
 
@@ -684,7 +681,7 @@ function renameSeason(idx) {
   seasons[idx].year = y;
   updateSeasonSelector();
   renderSeasonsList();
-  saveToLocalStorage();
+  saveToDB();
 }
 
 function renderSeasonsList() {
