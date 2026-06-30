@@ -8,7 +8,7 @@ function renderTabs() {
     const btn = document.createElement('button');
     btn.className = 'tab';
     btn.dataset.tab = key;
-    btn.textContent = `${t.emoji} ${t.name}`;
+    btn.innerHTML = `${flagHtml(t.emoji)} ${escapeHtml(t.name)}`;
     btn.onclick = () => switchTab(key);
     container.appendChild(btn);
   });
@@ -60,7 +60,7 @@ function renderPanels() {
       <div class="card">
         <div class="card-header">
           <div class="card-title-wrap">
-            <div class="card-title">${escapeHtml(t.emoji)} ${escapeHtml(t.name)}</div>
+            <div class="card-title">${flagHtml(t.emoji)} ${escapeHtml(t.name)}</div>
             ${t.hasPlayoff ? `<button class="icon-btn collapse-btn" onclick="toggleGroupCollapse('${key}')" title="Свернуть/развернуть группу" id="collapse-btn-${key}"></button>` : ''}
           </div>
           <button class="btn btn-sm" onclick="addTeamToTournament('${key}')">+ Команда</button>
@@ -173,11 +173,14 @@ function renderTeams(key) {
     const badge = isMe ? '<span class="my-team-badge">ваша</span>' : '';
     const pts = calcPoints(key, teamEntry.w, teamEntry.d);
     
+    const selectedTeam = globalTeam;
+    const flagDisplay = selectedTeam && selectedTeam.flag ? `<span class="team-flag-display" style="font-size:18px; flex-shrink:0;">${selectedTeam.flag}</span>` : '';
     row.innerHTML = `
       <div style="display:flex; gap:8px; align-items:center;">
+        ${flagDisplay}
         <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
           <option value="">Выбери команду</option>
-          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? flagHtml(gt.flag) + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
         </select>
         ${badge}
         <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
@@ -684,7 +687,8 @@ const TOURNAMENT_EMOJIS = [
   { v: '🇮🇪', l: '🇮🇪 Ирландия' },
   { v: '🇸🇪', l: '🇸🇪 Швеция' }, { v: '🇩🇰', l: '🇩🇰 Дания' }, { v: '🇳🇴', l: '🇳🇴 Норвегия' },
   { v: '🇨🇿', l: '🇨🇿 Чехия' }, { v: '🇷🇸', l: '🇷🇸 Сербия' }, { v: '🇭🇷', l: '🇭🇷 Хорватия' },
-  { v: '🇷🇴', l: '🇷🇴 Румыния' }, { v: '🇬🇷', l: '🇬🇷 Греция' }, { v: '🇭🇺', l: '🇭🇺 Венгрия' }
+  { v: '🇷🇴', l: '🇷🇴 Румыния' }, { v: '🇬🇷', l: '🇬🇷 Греция' }, { v: '🇭🇺', l: '🇭🇺 Венгрия' },
+  { v: FLAG_ENGLAND, l: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Англия' }, { v: FLAG_SCOTLAND, l: '🏴󠁧󠁢󠁳󠁣󠁴󠁿 Шотландия' }, { v: FLAG_WALES, l: '🏴󠁧󠁢󠁷󠁬󠁳󠁿 Уэльс' }
 ];
 
 function openTournamentModal(key) {
@@ -788,7 +792,7 @@ function renderSettingsPanel() {
     const item = document.createElement('div');
     item.className = 'tournament-list-item';
     item.innerHTML = `
-      <span style="font-size:18px; width:28px; text-align:center; flex-shrink:0; display:inline-block;">${escapeHtml(t.emoji)}</span>
+      <span style="font-size:18px; width:28px; text-align:center; flex-shrink:0; display:inline-block;">${flagHtml(t.emoji)}</span>
       <div style="flex:1; min-width:150px;">
         <div class="name">${escapeHtml(t.name)} ${t.isInternational ? '<span style="font-size:10px; color:var(--text-muted);">🌍</span>' : ''}</div>
         <div class="meta">${t.teams.length} команд · ${t.rounds} матчей · ${t.hasPlayoff ? 'плей-офф' : 'лига'}${t.displayLimit > 0 ? ` · топ-${t.displayLimit}` : ''}</div>
@@ -997,13 +1001,13 @@ function saveQuickSeason() {
       newTournaments[key].pointsPerDraw = preset.ptsDraw;
       newTournaments[key].isInternational = preset.international;
     }
-    newTournaments[key].teams = [{ teamId, w: matches, d: 0, l: 0, h2h: [0, 0, 0] }];
+    newTournaments[key].teams = [{ teamId, w: Math.max(matches, (result !== 'other') ? 1 : 0), d: 0, l: 0, h2h: [0, 0, 0] }];
     newTournaments[key].summary = { goals, assists, mvp, accuracy, rating };
     newTournaments[key].topScorer = boot ? 1 : null;
     if (result === 'champ') {
-      newTournaments[key].reachedPlayoff = hasPlayoff;
+      newTournaments[key].reachedPlayoff = true;
       newTournaments[key].playoffMatches = [{ round: 'Final', opponentTeamId: '', result: 'win', isHome: false }];
-    } else if (result === 'silver' && hasPlayoff) {
+    } else if (result === 'silver') {
       newTournaments[key].reachedPlayoff = true;
       newTournaments[key].playoffMatches = [{ round: 'Final', opponentTeamId: '', result: 'loss', isHome: false }];
     }
