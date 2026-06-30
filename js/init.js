@@ -9,18 +9,8 @@
   let loaded = false;
   let loadSource = '';
 
-  // 1. Try IndexedDB (primary storage)
-  try {
-    const dbData = await dbLoad();
-    if (dbData && dbData.seasons && dbData.seasons.length > 0) {
-      const migrated = migrateFlags(dbData);
-      applyData(migrated);
-      loaded = true;
-      loadSource = 'IndexedDB';
-    }
-  } catch(e) { console.warn('IndexedDB load failed', e); }
-
-  // 2. If empty — migrate from cookies
+  // 1. Try to migrate from cookies FIRST (before cleanup)
+  //    This is the only chance to recover data from cookies
   if (!loaded) {
     try {
       const migrated = await migrateFromCookies();
@@ -28,12 +18,28 @@
         const flagged = migrateFlags(migrated);
         applyData(flagged);
         loaded = true;
-        loadSource = 'cookies (migrated)';
+        loadSource = 'cookies (migrated to IndexedDB)';
       }
     } catch(e) { console.warn('Cookie migration failed', e); }
   }
 
-  // 3. If still empty — try legacy localStorage
+  // 2. AGGRESSIVE: delete ALL old data cookies to prevent 502 errors
+  aggressiveCookieCleanup();
+
+  // 3. Try IndexedDB (primary storage after migration)
+  if (!loaded) {
+    try {
+      const dbData = await dbLoad();
+      if (dbData && dbData.seasons && dbData.seasons.length > 0) {
+        const flagged = migrateFlags(dbData);
+        applyData(flagged);
+        loaded = true;
+        loadSource = 'IndexedDB';
+      }
+    } catch(e) { console.warn('IndexedDB load failed', e); }
+  }
+
+  // 4. If still empty — try legacy localStorage
   if (!loaded) {
     try {
       const legacyData = await loadFromLocalStorageLegacy();
@@ -43,12 +49,11 @@
         loadSource = 'localStorage (migrated)';
         syncCurrentSeason();
         await dbSave({ version: 5, seasons: JSON.parse(JSON.stringify(seasons)), currentSeasonIdx });
-        clearAllStorage();
       }
     } catch(e) {}
   }
 
-  // 4. Defaults
+  // 5. Defaults
   if (!loaded) {
     initDefaults();
     seasons = [{
@@ -63,17 +68,15 @@
   fullRender();
   await saveToDB();
 
-  // Show recovery notice if data was migrated
   if (loadSource) {
     console.log('Data loaded from:', loadSource);
   }
 
-  // Global error handler — show a banner if something goes wrong
   window.addEventListener('error', function(e) {
     const banner = document.getElementById('guide-banner');
     if (banner) {
       banner.style.display = 'block';
-      banner.querySelector('.guide-title').textContent = '⚠️ Произошла ошибка при загрузке данных';
+      banner.querySelector('.guide-title').textContent = '\u26A0\uFE0F Ошибка при загрузке данных';
       banner.querySelector('.guide-steps').innerHTML =
         '<div class="guide-step"><span class="guide-step-num">!</span><span>Если сайт не работает, добавь <b>?clear</b> в адресную строку и нажми Enter — это очистит старые данные.</span></div>';
     }

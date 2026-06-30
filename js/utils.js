@@ -67,8 +67,18 @@ function clearCookieChunks() {
   for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
 }
 
-function clearAllStorage() {
+function aggressiveCookieCleanup() {
+  // Delete known data cookies
   clearCookieChunks();
+  // Also brute-force delete common ranges in case count cookie is missing/corrupt
+  for (let i = 0; i <= 200; i++) {
+    const name = 'tournamentApp_c' + i;
+    if (getCookie(name) !== null) deleteCookie(name);
+  }
+}
+
+function clearAllStorage() {
+  aggressiveCookieCleanup();
   try { localStorage.removeItem('tournamentApp_v4'); } catch(e) {}
   try { localStorage.removeItem('tournamentApp_v3'); } catch(e) {}
   try { localStorage.removeItem('tournamentApp_v2'); } catch(e) {}
