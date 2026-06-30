@@ -826,14 +826,9 @@ function renderComparison() {
   if (!container) return;
   const c = getChartColors();
 
-  const allTeamIds = new Set();
-  tournamentOrder.forEach(key => {
-    (tournaments[key]?.teams || []).forEach(te => allTeamIds.add(te.teamId));
-  });
-  const teamList = [...allTeamIds].map(id => {
-    const gt = getTeamById(id);
-    return gt ? { id, name: gt.name, flag: gt.flag || '' } : null;
-  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const teamList = globalTeams.filter(t => t.visible !== false).map(t => ({
+    id: t.id, name: t.name, flag: t.flag || ''
+  })).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
   if (teamList.length < 2) {
     container.innerHTML = `<div class="empty">Нужно минимум 2 команды для сравнения</div>`;
@@ -859,19 +854,22 @@ function renderComparison() {
 }
 
 function getTeamStats(teamId) {
-  let matches = 0, wins = 0, draws = 0, losses = 0, goals = 0, h2hW = 0, h2hD = 0, h2hL = 0;
-  let ratingSum = 0, ratingCount = 0, tournaments = 0;
+  let matches = 0, wins = 0, draws = 0, losses = 0;
+  let h2hW = 0, h2hD = 0, h2hL = 0;
+  let goals = 0, ratingSum = 0, ratingCount = 0, tournaments = 0;
   seasons.forEach(s => {
     Object.entries(s.tournaments || {}).forEach(([key, t]) => {
       const te = (t.teams || []).find(e => e.teamId === teamId);
       if (!te) return;
       const gt = (s.globalTeams || []).find(g => g.id === teamId);
-      if (!gt || !gt.isMe) return;
+      if (!gt) return;
       matches += te.w + te.d + te.l;
       wins += te.w; draws += te.d; losses += te.l;
       h2hW += te.h2h?.[0] || 0; h2hD += te.h2h?.[1] || 0; h2hL += te.h2h?.[2] || 0;
-      goals += t.summary?.goals || 0;
-      if (t.summary?.rating > 0) { ratingSum += t.summary.rating; ratingCount++; }
+      if (gt.isMe) {
+        goals += t.summary?.goals || 0;
+        if (t.summary?.rating > 0) { ratingSum += t.summary.rating; ratingCount++; }
+      }
       tournaments++;
     });
   });
@@ -890,31 +888,60 @@ function runComparison() {
   const b = getTeamStats(bId);
   const c = getChartColors();
 
+  const hasDataA = a.matches > 0;
+  const hasDataB = b.matches > 0;
+
+  // Find head-to-head between these two teams
+  let h2hW = 0, h2hD = 0, h2hL = 0, h2hMatches = 0;
+  seasons.forEach(s => {
+    Object.values(s.tournaments || {}).forEach(t => {
+      const teA = (t.teams || []).find(e => e.teamId === aId);
+      const teB = (t.teams || []).find(e => e.teamId === bId);
+      if (teA && teB) {
+        h2hW += teA.h2h?.[0] || 0;
+        h2hD += teA.h2h?.[1] || 0;
+        h2hL += teA.h2h?.[2] || 0;
+        h2hMatches += (teA.h2h?.[0] || 0) + (teA.h2h?.[1] || 0) + (teA.h2h?.[2] || 0);
+      }
+    });
+  });
+
   const metrics = [
     { label: 'Матчи', a: a.matches, b: b.matches },
     { label: 'Победы', a: a.wins, b: b.wins },
-    { label: 'Голы', a: a.goals, b: b.goals },
-    { label: 'Турниры', a: a.tournaments, b: b.tournaments },
-    { label: 'Рейтинг', a: +a.rating.toFixed(1), b: +b.rating.toFixed(1) },
+    { label: 'Ничьи', a: a.draws, b: b.draws },
+    { label: 'Поражения', a: a.losses, b: b.losses },
   ];
+  if (a.goals > 0 || b.goals > 0) metrics.push({ label: 'Голы', a: a.goals, b: b.goals });
+  if (a.rating > 0 || b.rating > 0) metrics.push({ label: 'Рейтинг', a: +a.rating.toFixed(1), b: +b.rating.toFixed(1) });
+  metrics.push({ label: 'Турниры', a: a.tournaments, b: b.tournaments });
 
   const maxVal = Math.max(...metrics.map(m => Math.max(m.a, m.b)), 1);
 
-  let html = `<div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; margin-bottom:16px;">`;
+  let html = `<div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; margin-bottom:16px; align-items:center;">`;
   html += `<div style="text-align:center; font-weight:600; font-size:15px; color:${c.text};">${aTeam?.flag || ''} ${escapeHtml(aTeam?.name || '?')}</div>`;
   html += `<div style="color:${c.textMuted}; font-weight:600;">VS</div>`;
   html += `<div style="text-align:center; font-weight:600; font-size:15px; color:${c.text};">${bTeam?.flag || ''} ${escapeHtml(bTeam?.name || '?')}</div>`;
 
   metrics.forEach(m => {
-    const aPct = (m.a / maxVal) * 100;
-    const bPct = (m.b / maxVal) * 100;
-    const aColor = m.a >= m.b ? '#10b981' : c.textMuted;
-    const bColor = m.b >= m.a ? '#10b981' : c.textMuted;
-    html += `<div style="text-align:right; padding:4px 8px; font-size:13px; color:${aColor}; font-weight:${m.a >= m.b ? '600' : '400'};">${m.a}</div>`;
+    const aColor = m.a > m.b ? '#10b981' : (m.a === m.b ? c.text : c.textMuted);
+    const bColor = m.b > m.a ? '#10b981' : (m.b === m.a ? c.text : c.textMuted);
+    html += `<div style="text-align:right; padding:4px 8px; font-size:13px; color:${aColor}; font-weight:${m.a > m.b ? '600' : '400'};">${m.a}</div>`;
     html += `<div style="text-align:center; font-size:12px; color:${c.textMuted}; padding:4px 0; min-width:70px;">${m.label}</div>`;
-    html += `<div style="text-align:left; padding:4px 8px; font-size:13px; color:${bColor}; font-weight:${m.b >= m.a ? '600' : '400'};">${m.b}</div>`;
+    html += `<div style="text-align:left; padding:4px 8px; font-size:13px; color:${bColor}; font-weight:${m.b > m.a ? '600' : '400'};">${m.b}</div>`;
   });
   html += `</div>`;
+
+  // H2H section
+  if (h2hMatches > 0) {
+    html += `<div style="padding:12px; background:${c.grid}; border-radius:8px; margin-bottom:16px; text-align:center;">`;
+    html += `<div style="font-size:13px; font-weight:600; color:${c.text}; margin-bottom:8px;">⚔️ Встречи: ${h2hMatches} матчей</div>`;
+    html += `<div style="display:flex; justify-content:center; gap:16px; font-size:14px;">`;
+    html += `<span style="color:#10b981; font-weight:600;">${aTeam?.name?.slice(0, 8)}: ${h2hW}</span>`;
+    html += `<span style="color:${c.textMuted};">Ничьи: ${h2hD}</span>`;
+    html += `<span style="color:#3b82f6; font-weight:600;">${bTeam?.name?.slice(0, 8)}: ${h2hL}</span>`;
+    html += `</div></div>`;
+  }
 
   // Radar chart
   const radarId = 'comp-radar';
@@ -925,19 +952,35 @@ function runComparison() {
     destroyChart(radarId);
     const ctx = document.getElementById(radarId);
     if (!ctx) return;
-    const radarLabels = ['Победы', 'Голы', 'Рейтинг', 'Эффективность', 'Очки'];
+    const radarLabels = ['Победы', 'Ничьи', 'Турниры'];
+    if (a.goals > 0 || b.goals > 0) radarLabels.push('Голы');
+    if (a.rating > 0 || b.rating > 0) radarLabels.push('Рейтинг');
+    radarLabels.push('Эффективность');
+
+    const norm = (val, max) => max > 0 ? val / max : 0;
     const maxW = Math.max(a.wins, b.wins, 1);
+    const maxD = Math.max(a.draws, b.draws, 1);
+    const maxT = Math.max(a.tournaments, b.tournaments, 1);
     const maxG = Math.max(a.goals, b.goals, 1);
     const maxR = Math.max(a.rating, b.rating, 1);
-    const maxE = Math.max(a.matches > 0 ? a.wins / a.matches : 0, b.matches > 0 ? b.wins / b.matches : 0, 0.1);
-    const maxP = Math.max(a.wins * 3 + a.draws, b.wins * 3 + b.draws, 1);
+    const effA = a.matches > 0 ? a.wins / a.matches : 0;
+    const effB = b.matches > 0 ? b.wins / b.matches : 0;
+    const maxE = Math.max(effA, effB, 0.1);
+
+    const dataA = [norm(a.wins, maxW), norm(a.draws, maxD), norm(a.tournaments, maxT)];
+    const dataB = [norm(b.wins, maxW), norm(b.draws, maxD), norm(b.tournaments, maxT)];
+    if (a.goals > 0 || b.goals > 0) { dataA.push(norm(a.goals, maxG)); dataB.push(norm(b.goals, maxG)); }
+    if (a.rating > 0 || b.rating > 0) { dataA.push(norm(a.rating, maxR)); dataB.push(norm(b.rating, maxR)); }
+    dataA.push(effA / maxE);
+    dataB.push(effB / maxE);
+
     chartInstances[radarId] = new Chart(ctx, {
       type: 'radar',
       data: {
         labels: radarLabels,
         datasets: [
-          { label: aTeam?.name || 'A', data: [a.wins / maxW, a.goals / maxG, a.rating / maxR, (a.matches > 0 ? a.wins / a.matches : 0) / maxE, (a.wins * 3 + a.draws) / maxP], backgroundColor: 'rgba(59,130,246,0.2)', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#3b82f6' },
-          { label: bTeam?.name || 'B', data: [b.wins / maxW, b.goals / maxG, b.rating / maxR, (b.matches > 0 ? b.wins / b.matches : 0) / maxE, (b.wins * 3 + b.draws) / maxP], backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#ef4444' }
+          { label: aTeam?.name || 'A', data: dataA, backgroundColor: 'rgba(59,130,246,0.2)', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#3b82f6' },
+          { label: bTeam?.name || 'B', data: dataB, backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#ef4444' }
         ]
       },
       options: {
@@ -955,14 +998,9 @@ function renderPrediction() {
   if (!container) return;
   const c = getChartColors();
 
-  const allTeamIds = new Set();
-  tournamentOrder.forEach(key => {
-    (tournaments[key]?.teams || []).forEach(te => allTeamIds.add(te.teamId));
-  });
-  const teamList = [...allTeamIds].map(id => {
-    const gt = getTeamById(id);
-    return gt ? { id, name: gt.name, flag: gt.flag || '' } : null;
-  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const teamList = globalTeams.filter(t => t.visible !== false).map(t => ({
+    id: t.id, name: t.name, flag: t.flag || ''
+  })).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
   if (teamList.length < 2) {
     container.innerHTML = `<div class="empty">Нужно минимум 2 команды</div>`;

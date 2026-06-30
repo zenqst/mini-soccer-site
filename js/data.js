@@ -180,6 +180,7 @@ function openPresetsModal() {
   for (const r of regionOrder) {
     const items = regions[r];
     if (!items || items.length === 0) continue;
+    html += `<div class="presets-region">`;
     html += `<div class="presets-region-title">${regionEmojis[r] || '📋'} ${r}</div>`;
     html += `<div class="presets-grid">`;
     items.forEach(p => {
@@ -188,7 +189,7 @@ function openPresetsModal() {
         <div class="preset-meta">${p.rounds} матчей · ${p.hasPlayoff ? 'плей-офф' : 'лига'}${p.international ? ' · 🌍' : ''}</div>
       </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
   }
   grid.innerHTML = html;
   document.getElementById('presets-modal').classList.add('show');
