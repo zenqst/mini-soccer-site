@@ -102,36 +102,95 @@ function selectFlag(flag) {
 
 // ============ ПРЕСЕТЫ ТУРНИРОВ ============
 const TOURNAMENT_PRESETS = [
-  { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇬🇧', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇷🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇵🇹', name: 'Примейра', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇳🇱', name: 'Эредивизие', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇧🇷', name: 'Серия А (Бразилия)', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏆', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏆', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌍', name: 'Клубный ЧМ', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇪🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏆', name: 'Кубок (страна)', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 },
-  { emoji: '🇪🇺', name: 'Квалификация ЧЕ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1 }
+  // ===== Европа: Топ-5 лиг =====
+  { emoji: '🇬🇧', name: 'АПЛ', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇪🇸', name: 'Ла Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇮🇹', name: 'Серия А', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇩🇪', name: 'Бундеслига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇫🇷', name: 'Лига 1', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  // Европа: Другие
+  { emoji: '🇵🇹', name: 'Примейра', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇳🇱', name: 'Эредивизие', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇷🇺', name: 'РПЛ', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇹🇷', name: 'СуперЛига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇺🇦', name: 'Премьер-Лига', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Премьершип', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇧🇪', name: 'Про-Лига', rounds: 34, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇬🇷', name: 'Суперлига', rounds: 30, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇭🇷', name: 'ХНЛ', rounds: 36, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇨🇿', name: 'Фортуна Лига', rounds: 34, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  // Европа: Международные клубные
+  { emoji: '🏆', name: 'Лига Чемпионов', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🏆', name: 'Лига Европы', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🏆', name: 'Лига Конференций', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  // Европа: Сборные
+  { emoji: '🇪🇺', name: 'Чемпионат Европы', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🇪🇺', name: 'Квалификация ЧЕ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  { emoji: '🏆', name: 'Лига Наций (УЕФА)', rounds: 4, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Европа' },
+  // ===== Америка =====
+  { emoji: '🇧🇷', name: 'Серия А (Бразилия)', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇦🇷', name: 'Примера Дивизион', rounds: 28, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇲🇽', name: 'Лига MX', rounds: 34, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇺🇸', name: 'MLS', rounds: 34, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇨🇴', name: 'Лига BetPlay', rounds: 20, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇨🇱', name: 'Примера Дивизион (Чили)', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🇺🇾', name: 'Примера Дивизион (Уругвай)', rounds: 37, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🌎', name: 'Копа Америка', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🌎', name: 'Копа Либертадорес', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  { emoji: '🌎', name: 'Копа Судамерикана', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Америка' },
+  // ===== Азия =====
+  { emoji: '🇯🇵', name: 'Джей-Лига', rounds: 38, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🇰🇷', name: 'K-Лига 1', rounds: 38, international: false, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🇨🇳', name: 'Суперлига (Китай)', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🇸🇦', name: 'Саудовская Про-Лига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🇦🇺', name: 'А-League', rounds: 26, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🇮🇳', name: 'И-Лига / ISL', rounds: 22, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🌏', name: 'Чемпионат Азии', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🌏', name: 'Лига Чемпионов АФК', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  { emoji: '🌏', name: 'Квалификация ЧМ (Азия)', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Азия' },
+  // ===== Африка =====
+  { emoji: '🇪🇬', name: 'Египетская Премьер-Лига', rounds: 34, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  { emoji: '🇲🇦', name: 'Ботола', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  { emoji: '🇿🇦', name: 'Премьер-Лига (ЮАР)', rounds: 30, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  { emoji: '🌍', name: 'Лига Чемпионов КАФ', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  { emoji: '🌍', name: 'Кубок Конфедераций КАФ', rounds: 6, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  { emoji: '🌍', name: 'Кубок Африканских Наций', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Африка' },
+  // ===== Мир =====
+  { emoji: '🌍', name: 'Чемпионат Мира', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Мир' },
+  { emoji: '🌍', name: 'Клубный ЧМ', rounds: 3, international: true, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Мир' },
+  { emoji: '🌍', name: 'Квалификация ЧМ', rounds: 10, international: true, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Мир' },
+  { emoji: '🌍', name: 'Лига Наций (УЕФА)', rounds: 4, international: true, hasPlayoff: true, format: 'double', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Мир' },
+  // ===== Универсальные =====
+  { emoji: '🏆', name: 'Кубок (страна)', rounds: 3, international: false, hasPlayoff: true, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Универсальные' },
+  { emoji: '🏆', name: 'Суперкубок', rounds: 1, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':1,'1/4':1,'1/2':1,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Универсальные' },
+  { emoji: '📝', name: 'Свой турнир', rounds: 10, international: false, hasPlayoff: false, format: 'single', customFormat: {'1/8':2,'1/4':2,'1/2':2,'Final':1}, ptsWin: 3, ptsDraw: 1, region: 'Универсальные' },
 ];
 
 function openPresetsModal() {
   const grid = document.getElementById('presets-grid');
-  grid.innerHTML = TOURNAMENT_PRESETS.map((p, idx) => `
-    <div class="preset-card" onclick="applyPreset(${idx})">
-      <div class="preset-name">${p.emoji} ${escapeHtml(p.name)}</div>
-      <div class="preset-meta">${p.rounds} матчей · ${p.hasPlayoff ? 'плей-офф' : 'лига'}${p.international ? ' · 🌍' : ''}</div>
-    </div>
-  `).join('');
+  const regions = {};
+  TOURNAMENT_PRESETS.forEach((p, idx) => {
+    const r = p.region || 'Другое';
+    if (!regions[r]) regions[r] = [];
+    regions[r].push({ ...p, idx });
+  });
+  const regionOrder = ['Европа', 'Америка', 'Азия', 'Африка', 'Мир', 'Универсальные'];
+  const regionEmojis = { 'Европа': '⚽', 'Америка': '🌎', 'Азия': '🌏', 'Африка': '🌍', 'Мир': '🌐', 'Универсальные': '🔧' };
+  let html = '';
+  for (const r of regionOrder) {
+    const items = regions[r];
+    if (!items || items.length === 0) continue;
+    html += `<div class="presets-region-title">${regionEmojis[r] || '📋'} ${r}</div>`;
+    html += `<div class="presets-grid">`;
+    items.forEach(p => {
+      html += `<div class="preset-card" onclick="applyPreset(${p.idx})">
+        <div class="preset-name">${p.emoji} ${escapeHtml(p.name)}</div>
+        <div class="preset-meta">${p.rounds} матчей · ${p.hasPlayoff ? 'плей-офф' : 'лига'}${p.international ? ' · 🌍' : ''}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  grid.innerHTML = html;
   document.getElementById('presets-modal').classList.add('show');
 }
 

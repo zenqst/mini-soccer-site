@@ -98,6 +98,21 @@
         <div class="chart-subtitle">Общая статистика побед, ничьих и поражений</div>
         <div class="chart-wrap tall"><canvas id="chart-pie"></canvas></div>
       </div>
+      <div class="chart-card full-width">
+        <div class="chart-title">🗺️ Тепловая карта результатов</div>
+        <div class="chart-subtitle">Визуальная матрица: команда × турнир (🟢 победы · 🟡 ничьи · 🔴 поражения)</div>
+        <div id="heatmap-container" style="overflow-x: auto;"></div>
+      </div>
+      <div class="chart-card full-width">
+        <div class="chart-title">⚔️ Сравнение команд</div>
+        <div class="chart-subtitle">Детальное сравнение двух команд</div>
+        <div id="comparison-container"></div>
+      </div>
+      <div class="chart-card full-width">
+        <div class="chart-title">🔮 Прогноз матча</div>
+        <div class="chart-subtitle">Вероятность результата на основе статистики</div>
+        <div id="prediction-container"></div>
+      </div>
     </div>
   </div>
   
@@ -160,7 +175,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.16.1</span>
+    <span>Генератор турнирных таблиц v2.17.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>

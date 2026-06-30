@@ -754,6 +754,294 @@ function exportCareer() {
   navigator.clipboard.writeText(text).then(() => showToast('📋 Карьера скопирована')).catch(() => showToast('❌ Ошибка копирования'));
 }
 
+// ============ HEATMAP ============
+function renderHeatmap() {
+  const container = document.getElementById('heatmap-container');
+  if (!container) return;
+  const c = getChartColors();
+
+  // Collect data: team -> tournament -> { w, d, l }
+  const teamData = {};
+  tournamentOrder.forEach(key => {
+    const t = tournaments[key];
+    if (!t) return;
+    t.teams.forEach(te => {
+      const gt = getTeamById(te.teamId);
+      if (!gt) return;
+      if (!teamData[gt.id]) teamData[gt.id] = { name: gt.name, flag: gt.flag, tournaments: {} };
+      teamData[gt.id].tournaments[key] = { w: te.w, d: te.d, l: te.l, name: t.name };
+    });
+  });
+
+  if (Object.keys(teamData).length === 0 || tournamentOrder.length === 0) {
+    container.innerHTML = `<div class="empty">Нет данных для тепловой карты</div>`;
+    return;
+  }
+
+  const tLabels = tournamentOrder.map(k => tournaments[k]?.name || k);
+  const tWidth = Math.max(80, Math.min(120, Math.floor(700 / tLabels.length)));
+
+  let html = `<table style="border-collapse:collapse; font-size:12px; width:100%; min-width:${160 + tLabels.length * tWidth}px;">`;
+  html += `<thead><tr><th style="text-align:left; padding:6px 8px; color:${c.textMuted}; font-weight:500; min-width:140px; position:sticky; left:0; background:${c.tooltipBg}; z-index:1;">Команда</th>`;
+  tLabels.forEach(name => {
+    const short = name.length > 12 ? name.slice(0, 10) + '…' : name;
+    html += `<th style="padding:6px 4px; color:${c.textMuted}; font-weight:500; width:${tWidth}px; text-align:center; font-size:11px;">${escapeHtml(short)}</th>`;
+  });
+  html += `<th style="padding:6px 8px; color:${c.textMuted}; font-weight:500; text-align:center;">В</th></tr></thead><tbody>`;
+
+  const teamIds = Object.keys(teamData).sort((a, b) => {
+    const aTotal = tournamentOrder.reduce((s, k) => { const d = teamData[a].tournaments[k]; return s + (d ? d.w * 3 + d.d : 0); }, 0);
+    const bTotal = tournamentOrder.reduce((s, k) => { const d = teamData[b].tournaments[k]; return s + (d ? d.w * 3 + d.d : 0); }, 0);
+    return bTotal - aTotal;
+  });
+
+  teamIds.forEach(tid => {
+    const td = teamData[tid];
+    const flagStr = td.flag ? `<span style="margin-right:4px;">${td.flag}</span>` : '';
+    html += `<tr><td style="padding:4px 8px; white-space:nowrap; color:${c.text}; position:sticky; left:0; background:${c.tooltipBg}; z-index:1;">${flagStr}${escapeHtml(td.name)}</td>`;
+    let totalW = 0;
+    tournamentOrder.forEach(key => {
+      const d = td.tournaments[key];
+      if (!d) { html += `<td style="padding:4px; text-align:center; color:${c.textMuted};">—</td>`; return; }
+      totalW += d.w;
+      const total = d.w + d.d + d.l;
+      const wPct = total > 0 ? d.w / total : 0;
+      const dPct = total > 0 ? d.d / total : 0;
+      const bg = wPct >= 0.5 ? `rgba(16,185,129,${0.3 + wPct * 0.5})` :
+                 dPct >= 0.5 ? `rgba(245,158,11,${0.2 + dPct * 0.4})` :
+                 `rgba(239,68,68,${0.2 + (1 - wPct) * 0.4})`;
+      const textColor = wPct >= 0.5 ? '#10b981' : (dPct >= 0.5 ? '#f59e0b' : '#ef4444');
+      html += `<td style="padding:4px; text-align:center; background:${bg}; color:${textColor}; font-weight:500; border:1px solid ${c.grid};">${d.w}/${d.d}/${d.l}</td>`;
+    });
+    html += `<td style="padding:4px 8px; text-align:center; color:${c.text}; font-weight:600;">${totalW}</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ============ COMPARISON ============
+function renderComparison() {
+  const container = document.getElementById('comparison-container');
+  if (!container) return;
+  const c = getChartColors();
+
+  const allTeamIds = new Set();
+  tournamentOrder.forEach(key => {
+    (tournaments[key]?.teams || []).forEach(te => allTeamIds.add(te.teamId));
+  });
+  const teamList = [...allTeamIds].map(id => {
+    const gt = getTeamById(id);
+    return gt ? { id, name: gt.name, flag: gt.flag || '' } : null;
+  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  if (teamList.length < 2) {
+    container.innerHTML = `<div class="empty">Нужно минимум 2 команды для сравнения</div>`;
+    return;
+  }
+
+  const opts = teamList.map(t => `<option value="${t.id}">${t.flag} ${escapeHtml(t.name)}</option>`).join('');
+
+  container.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px;">
+      <select id="comp-team-a" style="flex:1; min-width:140px;">${opts}</select>
+      <span style="font-weight:600; color:${c.textMuted};">VS</span>
+      <select id="comp-team-b" style="flex:1; min-width:140px;">${opts}</select>
+      <button class="btn btn-primary" onclick="runComparison()">Сравнить</button>
+    </div>
+    <div id="comp-result"></div>
+  `;
+
+  if (teamList.length >= 2) {
+    document.getElementById('comp-team-b').selectedIndex = 1;
+    runComparison();
+  }
+}
+
+function getTeamStats(teamId) {
+  let matches = 0, wins = 0, draws = 0, losses = 0, goals = 0, h2hW = 0, h2hD = 0, h2hL = 0;
+  let ratingSum = 0, ratingCount = 0, tournaments = 0;
+  seasons.forEach(s => {
+    Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+      const te = (t.teams || []).find(e => e.teamId === teamId);
+      if (!te) return;
+      const gt = (s.globalTeams || []).find(g => g.id === teamId);
+      if (!gt || !gt.isMe) return;
+      matches += te.w + te.d + te.l;
+      wins += te.w; draws += te.d; losses += te.l;
+      h2hW += te.h2h?.[0] || 0; h2hD += te.h2h?.[1] || 0; h2hL += te.h2h?.[2] || 0;
+      goals += t.summary?.goals || 0;
+      if (t.summary?.rating > 0) { ratingSum += t.summary.rating; ratingCount++; }
+      tournaments++;
+    });
+  });
+  return { matches, wins, draws, losses, goals, h2hW, h2hD, h2hL, rating: ratingCount > 0 ? (ratingSum / ratingCount) : 0, tournaments };
+}
+
+function runComparison() {
+  const aId = document.getElementById('comp-team-a').value;
+  const bId = document.getElementById('comp-team-b').value;
+  const result = document.getElementById('comp-result');
+  if (!aId || !bId || aId === bId) { result.innerHTML = `<div class="empty">Выбери разные команды</div>`; return; }
+
+  const aTeam = getTeamById(aId);
+  const bTeam = getTeamById(bId);
+  const a = getTeamStats(aId);
+  const b = getTeamStats(bId);
+  const c = getChartColors();
+
+  const metrics = [
+    { label: 'Матчи', a: a.matches, b: b.matches },
+    { label: 'Победы', a: a.wins, b: b.wins },
+    { label: 'Голы', a: a.goals, b: b.goals },
+    { label: 'Турниры', a: a.tournaments, b: b.tournaments },
+    { label: 'Рейтинг', a: +a.rating.toFixed(1), b: +b.rating.toFixed(1) },
+  ];
+
+  const maxVal = Math.max(...metrics.map(m => Math.max(m.a, m.b)), 1);
+
+  let html = `<div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; margin-bottom:16px;">`;
+  html += `<div style="text-align:center; font-weight:600; font-size:15px; color:${c.text};">${aTeam?.flag || ''} ${escapeHtml(aTeam?.name || '?')}</div>`;
+  html += `<div style="color:${c.textMuted}; font-weight:600;">VS</div>`;
+  html += `<div style="text-align:center; font-weight:600; font-size:15px; color:${c.text};">${bTeam?.flag || ''} ${escapeHtml(bTeam?.name || '?')}</div>`;
+
+  metrics.forEach(m => {
+    const aPct = (m.a / maxVal) * 100;
+    const bPct = (m.b / maxVal) * 100;
+    const aColor = m.a >= m.b ? '#10b981' : c.textMuted;
+    const bColor = m.b >= m.a ? '#10b981' : c.textMuted;
+    html += `<div style="text-align:right; padding:4px 8px; font-size:13px; color:${aColor}; font-weight:${m.a >= m.b ? '600' : '400'};">${m.a}</div>`;
+    html += `<div style="text-align:center; font-size:12px; color:${c.textMuted}; padding:4px 0; min-width:70px;">${m.label}</div>`;
+    html += `<div style="text-align:left; padding:4px 8px; font-size:13px; color:${bColor}; font-weight:${m.b >= m.a ? '600' : '400'};">${m.b}</div>`;
+  });
+  html += `</div>`;
+
+  // Radar chart
+  const radarId = 'comp-radar';
+  html += `<div style="position:relative; width:100%; max-width:400px; margin:0 auto; height:300px;"><canvas id="${radarId}"></canvas></div>`;
+  result.innerHTML = html;
+
+  setTimeout(() => {
+    destroyChart(radarId);
+    const ctx = document.getElementById(radarId);
+    if (!ctx) return;
+    const radarLabels = ['Победы', 'Голы', 'Рейтинг', 'Эффективность', 'Очки'];
+    const maxW = Math.max(a.wins, b.wins, 1);
+    const maxG = Math.max(a.goals, b.goals, 1);
+    const maxR = Math.max(a.rating, b.rating, 1);
+    const maxE = Math.max(a.matches > 0 ? a.wins / a.matches : 0, b.matches > 0 ? b.wins / b.matches : 0, 0.1);
+    const maxP = Math.max(a.wins * 3 + a.draws, b.wins * 3 + b.draws, 1);
+    chartInstances[radarId] = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: radarLabels,
+        datasets: [
+          { label: aTeam?.name || 'A', data: [a.wins / maxW, a.goals / maxG, a.rating / maxR, (a.matches > 0 ? a.wins / a.matches : 0) / maxE, (a.wins * 3 + a.draws) / maxP], backgroundColor: 'rgba(59,130,246,0.2)', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#3b82f6' },
+          { label: bTeam?.name || 'B', data: [b.wins / maxW, b.goals / maxG, b.rating / maxR, (b.matches > 0 ? b.wins / b.matches : 0) / maxE, (b.wins * 3 + b.draws) / maxP], backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#ef4444' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: c.text, font: { size: 12 } } } },
+        scales: { r: { grid: { color: c.grid }, angleLines: { color: c.grid }, pointLabels: { color: c.text, font: { size: 11 } }, ticks: { display: false }, suggestedMin: 0, suggestedMax: 1 } }
+      }
+    });
+  }, 50);
+}
+
+// ============ PREDICTION ============
+function renderPrediction() {
+  const container = document.getElementById('prediction-container');
+  if (!container) return;
+  const c = getChartColors();
+
+  const allTeamIds = new Set();
+  tournamentOrder.forEach(key => {
+    (tournaments[key]?.teams || []).forEach(te => allTeamIds.add(te.teamId));
+  });
+  const teamList = [...allTeamIds].map(id => {
+    const gt = getTeamById(id);
+    return gt ? { id, name: gt.name, flag: gt.flag || '' } : null;
+  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  if (teamList.length < 2) {
+    container.innerHTML = `<div class="empty">Нужно минимум 2 команды</div>`;
+    return;
+  }
+
+  const opts = teamList.map(t => `<option value="${t.id}">${t.flag} ${escapeHtml(t.name)}</option>`).join('');
+  container.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px;">
+      <select id="pred-team-a" style="flex:1; min-width:140px;">${opts}</select>
+      <span style="font-weight:600; color:${c.textMuted};">VS</span>
+      <select id="pred-team-b" style="flex:1; min-width:140px;">${opts}</select>
+      <button class="btn btn-primary" onclick="runPrediction()">Прогноз</button>
+    </div>
+    <div id="pred-result"></div>
+  `;
+
+  if (teamList.length >= 2) {
+    document.getElementById('pred-team-b').selectedIndex = 1;
+    runPrediction();
+  }
+}
+
+function runPrediction() {
+  const aId = document.getElementById('pred-team-a').value;
+  const bId = document.getElementById('pred-team-b').value;
+  const result = document.getElementById('pred-result');
+  if (!aId || !bId || aId === bId) { result.innerHTML = `<div class="empty">Выбери разные команды</div>`; return; }
+
+  const aTeam = getTeamById(aId);
+  const bTeam = getTeamById(bId);
+  const a = getTeamStats(aId);
+  const b = getTeamStats(bId);
+  const c = getChartColors();
+
+  const calcStrength = (s) => {
+    const total = s.matches || 1;
+    const winPct = s.wins / total;
+    const goalsPerMatch = s.goals / total;
+    const eff = s.matches > 0 ? s.wins / s.matches : 0.33;
+    return winPct * 3 + goalsPerMatch * 0.5 + s.rating * 0.1 + eff * 2;
+  };
+
+  const sA = Math.max(calcStrength(a), 0.1);
+  const sB = Math.max(calcStrength(b), 0.1);
+  const total = sA + sB;
+
+  const winA = Math.round((sA / total) * 100);
+  const winB = Math.round((sB / total) * 100);
+  const draw = Math.max(0, 100 - winA - winB);
+  const drawBias = 15;
+  const adjA = Math.round(winA * (100 - drawBias) / 100);
+  const adjB = Math.round(winB * (100 - drawBias) / 100);
+  const adjDraw = 100 - adjA - adjB;
+
+  const bar = (pct, color) => `<div style="height:32px; background:${color}; width:${pct}%; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#fff; min-width:${pct > 0 ? '40px' : '0'};">${pct > 5 ? pct + '%' : ''}</div>`;
+
+  let html = `<div style="text-align:center; margin-bottom:12px; font-size:15px; font-weight:600; color:${c.text};">${aTeam?.flag || ''} ${escapeHtml(aTeam?.name || '?')} vs ${bTeam?.flag || ''} ${escapeHtml(bTeam?.name || '?')}</div>`;
+  html += `<div style="border-radius:8px; overflow:hidden; margin-bottom:12px;">`;
+  html += bar(adjA, '#10b981');
+  html += bar(adjDraw, '#64748b');
+  html += bar(adjB, '#3b82f6');
+  html += `</div>`;
+  html += `<div style="display:flex; justify-content:space-between; font-size:12px; color:${c.textMuted};">`;
+  html += `<span>🟢 ${escapeHtml(aTeam?.name || 'A')}: ${adjA}%</span>`;
+  html += `<span>⬜ Ничья: ${adjDraw}%</span>`;
+  html += `<span>🔵 ${escapeHtml(bTeam?.name || 'B')}: ${adjB}%</span>`;
+  html += `</div>`;
+
+  // Factor explanation
+  html += `<div style="margin-top:16px; padding:12px; background:${c.grid}; border-radius:6px; font-size:12px; color:${c.textMuted};">`;
+  html += `<strong style="color:${c.text};">Факторы прогноза:</strong><br>`;
+  html += `${escapeHtml(aTeam?.name || 'A')}: ${a.wins}W/${a.draws}D/${a.losses}L · ${a.goals} голов · ⭐ ${a.rating.toFixed(1)}<br>`;
+  html += `${escapeHtml(bTeam?.name || 'B')}: ${b.wins}W/${b.draws}D/${b.losses}L · ${b.goals} голов · ⭐ ${b.rating.toFixed(1)}`;
+  html += `</div>`;
+
+  result.innerHTML = html;
+}
+
 function renderAllCharts() {
   renderSummaryStats();
   renderPointsChart();
@@ -767,5 +1055,8 @@ function renderAllCharts() {
   renderRatingChart();
   renderAchievementsChart();
   renderPieChart();
+  renderHeatmap();
+  renderComparison();
+  renderPrediction();
 }
 

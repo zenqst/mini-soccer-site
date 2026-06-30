@@ -921,7 +921,14 @@ function addQuickTournament() {
   const div = document.createElement('div');
   div.className = 'qs-tournament';
   div.id = id;
-  const presetOptions = TOURNAMENT_PRESETS.map(p => `<option value="${escapeHtml(p.name)}" data-emoji="${escapeHtml(p.emoji)}">${p.emoji} ${escapeHtml(p.name)}</option>`).join('');
+  const regionOrder = ['Европа', 'Америка', 'Азия', 'Африка', 'Мир', 'Универсальные'];
+  const regions = {};
+  TOURNAMENT_PRESETS.forEach(p => { const r = p.region || 'Другое'; if (!regions[r]) regions[r] = []; regions[r].push(p); });
+  const presetOptions = regionOrder.map(r => {
+    const items = regions[r];
+    if (!items || items.length === 0) return '';
+    return `<optgroup label="${r}">${items.map(p => `<option value="${escapeHtml(p.name)}" data-emoji="${escapeHtml(p.emoji)}">${p.emoji} ${escapeHtml(p.name)}</option>`).join('')}</optgroup>`;
+  }).join('');
   const emojiOptions = TOURNAMENT_EMOJIS.map(e => `<option value="${escapeHtml(e.v)}">${e.l}</option>`).join('');
   div.innerHTML = `
     <div class="qs-t-header">
