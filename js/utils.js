@@ -37,18 +37,51 @@ function loadFromCookies() {
     const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
     if (chunkCount <= 0) return null;
     let json = '';
+    let missing = 0;
     for (let i = 1; i <= chunkCount; i++) {
       const chunk = getCookie('tournamentApp_c' + i);
-      if (chunk === null) return null;
+      if (chunk === null) { missing++; continue; }
       json += chunk;
     }
-    return JSON.parse(json);
+    if (json.length === 0) return null;
+    try {
+      return JSON.parse(json);
+    } catch(e) {
+      // JSON truncated due to missing chunks — try to salvage what we can
+      // Find the last complete season object
+      const lastSeasonEnd = json.lastIndexOf('},{');
+      if (lastSeasonEnd > 0) {
+        try {
+          const partial = json.substring(0, lastSeasonEnd + 1) + ']}';
+          const obj = JSON.parse(partial);
+          if (obj && obj.seasons && obj.seasons.length > 0) return obj;
+        } catch(e2) {}
+      }
+      return null;
+    }
   } catch (e) { console.warn('Cookie load failed', e); return null; }
 }
 
 function clearCookieChunks() {
   const chunkCount = parseInt(getCookie('tournamentApp_c0') || '0', 10);
   for (let i = 0; i <= chunkCount; i++) deleteCookie('tournamentApp_c' + i);
+}
+
+function clearAllStorage() {
+  clearCookieChunks();
+  try { localStorage.removeItem('tournamentApp_v4'); } catch(e) {}
+  try { localStorage.removeItem('tournamentApp_v3'); } catch(e) {}
+  try { localStorage.removeItem('tournamentApp_v2'); } catch(e) {}
+}
+
+function checkUrlClearParam() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('clear')) {
+    clearAllStorage();
+    window.history.replaceState({}, '', window.location.pathname);
+    return true;
+  }
+  return false;
 }
 
 // ============ INDEXED DB ============

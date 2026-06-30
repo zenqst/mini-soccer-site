@@ -1,6 +1,13 @@
 // ============ INIT ============
 (async function init() {
+  // Emergency: ?clear param wipes all storage and reloads
+  if (checkUrlClearParam()) {
+    location.reload();
+    return;
+  }
+
   let loaded = false;
+  let loadSource = '';
 
   // 1. Try IndexedDB (primary storage)
   try {
@@ -9,6 +16,7 @@
       const migrated = migrateFlags(dbData);
       applyData(migrated);
       loaded = true;
+      loadSource = 'IndexedDB';
     }
   } catch(e) { console.warn('IndexedDB load failed', e); }
 
@@ -20,6 +28,7 @@
         const flagged = migrateFlags(migrated);
         applyData(flagged);
         loaded = true;
+        loadSource = 'cookies (migrated)';
       }
     } catch(e) { console.warn('Cookie migration failed', e); }
   }
@@ -31,12 +40,10 @@
       if (legacyData) {
         applyData(legacyData);
         loaded = true;
-        // Migrate to IndexedDB
+        loadSource = 'localStorage (migrated)';
         syncCurrentSeason();
         await dbSave({ version: 5, seasons: JSON.parse(JSON.stringify(seasons)), currentSeasonIdx });
-        localStorage.removeItem('tournamentApp_v4');
-        localStorage.removeItem('tournamentApp_v3');
-        localStorage.removeItem('tournamentApp_v2');
+        clearAllStorage();
       }
     } catch(e) {}
   }
@@ -55,6 +62,22 @@
 
   fullRender();
   await saveToDB();
+
+  // Show recovery notice if data was migrated
+  if (loadSource) {
+    console.log('Data loaded from:', loadSource);
+  }
+
+  // Global error handler — show a banner if something goes wrong
+  window.addEventListener('error', function(e) {
+    const banner = document.getElementById('guide-banner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.querySelector('.guide-title').textContent = '⚠️ Произошла ошибка при загрузке данных';
+      banner.querySelector('.guide-steps').innerHTML =
+        '<div class="guide-step"><span class="guide-step-num">!</span><span>Если сайт не работает, добавь <b>?clear</b> в адресную строку и нажми Enter — это очистит старые данные.</span></div>';
+    }
+  });
 
   document.getElementById('tournament-modal').addEventListener('click', (e) => { if (e.target.id === 'tournament-modal') closeModal(); });
   document.getElementById('data-modal').addEventListener('click', (e) => { if (e.target.id === 'data-modal') closeDataModal(); });
