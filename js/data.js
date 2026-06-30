@@ -343,6 +343,10 @@ function isTournamentFinishedForSeason(seasonData, key) {
   });
   if (!myEntry) return false;
   const groupMatches = myEntry.w + myEntry.d + myEntry.l;
+  if (t.playoffMatches?.length > 0) {
+    const lastMatch = t.playoffMatches[t.playoffMatches.length - 1];
+    if (lastMatch.round === 'Final' && (lastMatch.result === 'win' || lastMatch.result === 'loss')) return true;
+  }
   if (!t.hasPlayoff) return groupMatches >= t.rounds;
   if (!t.reachedPlayoff) return groupMatches >= t.rounds;
   if (t.playoffMatches.length === 0) return false;
