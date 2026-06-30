@@ -407,6 +407,7 @@ function renderCareer() {
   const seasonHistory = [];
   const tournamentStats = {};
   let firstMatchSeason = null, firstWinSeason = null, firstTrophySeason = null;
+  const seasonMatchYears = [], seasonWinYears = [], seasonTrophyYears = [];
 
   seasons.forEach((s, sIdx) => {
     const sTeams = new Set();
@@ -507,12 +508,15 @@ function renderCareer() {
       bestRatingTournament = s.year;
     }
 
-    if (sMatches > 0 && !firstMatchSeason) firstMatchSeason = s.year;
-    if (sWins > 0 && !firstWinSeason) firstWinSeason = s.year;
-    if (sChampionships > 0 && !firstTrophySeason) firstTrophySeason = s.year;
-
     seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, wins: sWins, draws: sDraws, losses: sLosses, rating: avgRating, championships: sChampionships, teams: sTeams.size });
+    if (sMatches > 0) seasonMatchYears.push(Number(s.year));
+    if (sWins > 0) seasonWinYears.push(Number(s.year));
+    if (sChampionships > 0) seasonTrophyYears.push(Number(s.year));
   });
+
+  firstMatchSeason = seasonMatchYears.length > 0 ? Math.min(...seasonMatchYears) : null;
+  firstWinSeason = seasonWinYears.length > 0 ? Math.min(...seasonWinYears) : null;
+  firstTrophySeason = seasonTrophyYears.length > 0 ? Math.min(...seasonTrophyYears) : null;
 
   const myTeams = Object.values(myTeamsMap).sort((a, b) => Math.max(...b.seasons.map(Number)) - Math.max(...a.seasons.map(Number)));
   const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
