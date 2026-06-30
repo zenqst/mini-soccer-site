@@ -281,4 +281,35 @@
   .qs-tournament { background: var(--bg); border: 1px solid var(--border); padding: 12px; margin-bottom: 8px; }
   .qs-tournament .qs-t-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .qs-tournament .qs-t-grid { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
-  @media (min-width: 640px) { .qs-tournament .qs-t-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
+  @media (min-width: 640px) { .qs-tournament .qs-t-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2e2e2e;
+      --text: #e5e5e5;
+      --text-muted: #999;
+      --accent: #e5e5e5;
+      --accent-hover: #ccc;
+      --highlight: #2a2517;
+      --danger: #ef4444;
+    }
+    .btn-danger:hover { background: #2a1212; }
+    .my-team-note { background: rgba(255,255,255,0.03); }
+    .summary-section { background: linear-gradient(135deg, #2a2517 0%, #332d1a 100%); border-color: #5c4f2a; }
+    .summary-text { background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); }
+    .top-stats { background: linear-gradient(135deg, #2a2517 0%, #332d1a 100%); border-color: #5c4f2a; }
+    .guide-banner { background: linear-gradient(135deg, #111827 0%, #1e293b 100%); border-color: #334155; }
+    .guide-title { color: #93c5fd; }
+    .preset-card:hover { background: var(--highlight); border-color: #5c4f2a; }
+    .flag-preview:hover { background: var(--highlight); }
+    .career-stat.highlight { background: linear-gradient(135deg, #2a2517 0%, #332d1a 100%); border-color: #5c4f2a; }
+    .career-trophy.champ { background: linear-gradient(135deg, #2a2517 0%, #332d1a 100%); border-color: #5c4f2a; }
+    .career-trophy.silver { background: linear-gradient(135deg, #1a1f2e 0%, #252d3d 40%, #2e3748 100%); border-color: #4a5568; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 3px rgba(0,0,0,0.3); }
+    .career-trophy.boot { background: linear-gradient(135deg, #2a2517 0%, #332d1a 100%); border-color: #5c4f2a; }
+    .career-trophy.ball { background: linear-gradient(135deg, #1f1507 0%, #33200e 50%, #3d2812 100%); border-color: #7c3a12; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 3px rgba(0,0,0,0.3); }
+    .season-list-item.current { border-color: #5c4f2a; }
+    .modal-overlay { background: rgba(0,0,0,0.7); }
+    .toast { background: #333; }
+  }
