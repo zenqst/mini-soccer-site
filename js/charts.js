@@ -614,6 +614,55 @@ function renderCareer() {
 
   if (seasonHistory.length > 1) {
     html += `<div class="career-section">
+      <div class="career-section-title">📈 Динамика по сезонам</div>
+      <canvas id="career-dynamics-chart" style="width:100%; max-height:300px;"></canvas>
+    </div>`;
+  }
+
+  // Tournament type analytics
+  const typeStats = { league: { name: '🏆 Лиги', matches: 0, wins: 0, goals: 0, trophies: 0 }, cup: { name: '🥇 Кубки', matches: 0, wins: 0, goals: 0, trophies: 0 }, intl: { name: '🌍 Международные', matches: 0, wins: 0, goals: 0, trophies: 0 } };
+  seasons.forEach(s => {
+    Object.entries(s.tournaments || {}).forEach(([key, t]) => {
+      const myEntry = (t.teams || []).find(te => {
+        const gt = (s.globalTeams || []).find(g => g.id === te.teamId);
+        return gt && gt.isMe;
+      });
+      if (!myEntry) return;
+      const m = myEntry.w + myEntry.d + myEntry.l;
+      const type = t.isInternational ? 'intl' : (t.hasPlayoff ? 'cup' : 'league');
+      typeStats[type].matches += m;
+      typeStats[type].wins += myEntry.w;
+      typeStats[type].goals += t.summary?.goals || 0;
+      const ach = isTournamentFinishedForSeason(s, key);
+      if (ach) {
+        const rank = t.teams.indexOf(myEntry) + 1;
+        const hasFinalWin = t.playoffMatches?.length > 0 && t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' && t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win';
+        if (rank === 1 || hasFinalWin) typeStats[type].trophies++;
+      }
+    });
+  });
+  const activeTypes = Object.values(typeStats).filter(t => t.matches > 0);
+  if (activeTypes.length > 1) {
+    html += `<div class="career-section">
+      <div class="career-section-title">📊 Аналитика по типам турниров</div>
+      <div class="career-grid" style="grid-template-columns: repeat(${Math.min(activeTypes.length, 3)}, 1fr);">
+        ${activeTypes.map(t => `
+          <div class="career-stat">
+            <div class="label">${t.name}</div>
+            <div class="value">${t.matches}</div>
+            <div class="sub">${t.wins} побед · ${t.goals} голов · ${t.trophies > 0 ? '🏆 ' + t.trophies : 'без трофеев'}</div>
+            <div style="margin-top:6px; height:4px; background:var(--border); border-radius:2px; overflow:hidden;">
+              <div style="height:100%; width:${t.matches > 0 ? (t.wins / t.matches * 100).toFixed(0) : 0}%; background:#10b981;"></div>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${t.matches > 0 ? (t.wins / t.matches * 100).toFixed(0) : 0}% побед</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (seasonHistory.length > 1) {
+    html += `<div class="career-section">
       <div class="career-section-title">📊 Сравнение сезонов</div>
       <canvas id="career-comparison-chart" style="width:100%; max-height:300px;"></canvas>
     </div>`;
@@ -676,9 +725,37 @@ function renderCareer() {
   container.innerHTML = html;
 
   const sortedHistory = [...seasonHistory].sort((a, b) => Number(a.year) - Number(b.year));
-  if (seasonHistory.length > 1) renderCareerComparisonChart(sortedHistory);
+  if (seasonHistory.length > 1) {
+    renderCareerDynamicsChart(sortedHistory);
+    renderCareerComparisonChart(sortedHistory);
+  }
   if (seasonHistory.some(s => s.rating)) renderCareerRatingChart(sortedHistory);
   if (totalMatches > 0) renderCareerPieChart(totalWins, totalDraws, totalLosses);
+}
+
+function renderCareerDynamicsChart(data) {
+  const ctx = document.getElementById('career-dynamics-chart');
+  if (!ctx) return;
+  const c = getChartColors();
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.year),
+      datasets: [
+        { label: 'Голы', data: data.map(d => d.goals), borderColor: COLORS.green, backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: COLORS.green },
+        { label: 'Ассисты', data: data.map(d => d.assists), borderColor: COLORS.blue, backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: COLORS.blue },
+        { label: 'Победы', data: data.map(d => d.wins), borderColor: COLORS.amber, backgroundColor: 'rgba(245,158,11,0.05)', tension: 0.3, fill: false, pointRadius: 4, pointBackgroundColor: COLORS.amber, borderDash: [5, 3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: c.text, font: { size: 12 }, boxWidth: 12, padding: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.text, font: { size: 11 } }, border: { display: false } },
+        y: { grid: { color: c.grid }, ticks: { color: c.textMuted, font: { size: 11 } }, border: { display: false }, beginAtZero: true }
+      }
+    }
+  });
 }
 
 function renderCareerComparisonChart(data) {
