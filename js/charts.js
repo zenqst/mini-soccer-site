@@ -561,15 +561,19 @@ function renderCareer() {
 
   if (trophies.length > 0) {
     const sorted = trophies.sort((a, b) => b.season - a.season);
+    const renderTrophy = (t) => {
+      const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : t.type === 'ball' ? ' ball' : '';
+      const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : t.type === 'ball' ? '' : '';
+      return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
+    };
+    window._careerTrophies = sorted;
+    window._careerTrophyStep = 5;
     html += `<div class="career-section">
-      <div class="career-section-title">🏆 Достижения</div>
-      <div style="display:flex; flex-wrap:wrap; gap:4px;">
-        ${sorted.map(t => {
-          const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : t.type === 'ball' ? ' ball' : '';
-          const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : t.type === 'ball' ? '' : '';
-          return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
-        }).join('')}
+      <div class="career-section-title">🏆 Достижения <span style="font-size:12px; font-weight:400; color:var(--text-muted);">(${sorted.length})</span></div>
+      <div id="trophies-container" style="display:flex; flex-wrap:wrap; gap:4px;">
+        ${sorted.slice(0, 5).map(renderTrophy).join('')}
       </div>
+      ${sorted.length > 5 ? `<button class="btn btn-sm" style="margin-top:8px;" onclick="showMoreTrophies()">Показать ещё</button>` : ''}
     </div>`;
   }
 
@@ -705,6 +709,23 @@ function renderCareer() {
   }
   if (seasonHistory.some(s => s.rating)) renderCareerRatingChart(sortedHistory);
   if (totalMatches > 0) renderCareerPieChart(totalWins, totalDraws, totalLosses);
+}
+
+function showMoreTrophies() {
+  const container = document.getElementById('trophies-container');
+  const btn = container?.nextElementSibling;
+  if (!container || !window._careerTrophies) return;
+  const all = window._careerTrophies;
+  const current = container.children.length;
+  const next = Math.min(current + 5, all.length);
+  const renderTrophy = (t) => {
+    const cls = t.type === 'champ' ? ' champ' : t.type === 'silver' ? ' silver' : t.type === 'boot' ? ' boot' : t.type === 'ball' ? ' ball' : '';
+    const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : t.type === 'ball' ? '' : '';
+    return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
+  };
+  container.innerHTML = all.slice(0, next).map(renderTrophy).join('');
+  if (next >= all.length && btn) btn.remove();
+  else if (btn) btn.textContent = `Показать ещё (${next}/${all.length})`;
 }
 
 function renderCareerDynamicsChart(data) {
