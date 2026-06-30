@@ -486,7 +486,7 @@ function renderCareer() {
             trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'silver' });
           }
           if (t.topScorer === 1) {
-            trophies.push({ emoji: '👟', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
+            trophies.push({ emoji: '🥇', name: 'Золотая бутса — ' + t.name, season: s.year, type: 'boot' });
           }
         }
       }

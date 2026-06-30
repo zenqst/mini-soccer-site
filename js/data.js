@@ -83,7 +83,7 @@ function renderFlagsGrid(filter) {
     ? sorted.filter(f => f.n.toLowerCase().includes(filter) || f.f.includes(filter))
     : sorted;
   grid.innerHTML = filtered.map(f => 
-    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag('${escapeHtml(f.f)}')">${f.f}</button>`
+    `<button class="flag-btn" title="${escapeHtml(f.n)}" onclick="pickFlag(decodeURIComponent('${encodeURIComponent(f.f)}'))">${f.f}</button>`
   ).join('');
   if (filtered.length === 0) {
     grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">Ничего не найдено</div>';
@@ -517,17 +517,24 @@ function migrateFlags(data) {
     'CZE': '🇨🇿', 'ROM': '🇷🇴'
   };
   const isFlagBroken = (f) => f && f.length <= 2 && f !== '' && !f.startsWith('🏴');
+  const ukNameToFlag = (name) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('англи') || n.includes('england') || n.includes(' English')) return FLAG_ENGLAND;
+    if (n.includes('шотланд') || n.includes('scotland') || n.includes(' Scottish')) return FLAG_SCOTLAND;
+    if (n.includes('уэльс') || n.includes('wales') || n.includes(' Welsh')) return FLAG_WALES;
+    return null;
+  };
   data.seasons.forEach(s => {
     (s.globalTeams || []).forEach(t => {
       if (t.visible === undefined) t.visible = true;
       if (isFlagBroken(t.flag)) {
-        t.flag = teamFlagByName[t.name] || '🏳️';
+        t.flag = teamFlagByName[t.name] || ukNameToFlag(t.name) || '🏳️';
       }
       if (!t.flag || t.flag === '') return;
       if (teamFlagByName[t.name]) {
         t.flag = teamFlagByName[t.name];
       } else if (isFlagBroken(t.flag)) {
-        t.flag = '🏳️';
+        t.flag = ukNameToFlag(t.name) || '🏳️';
       }
     });
     Object.values(s.tournaments || {}).forEach(t => {

@@ -938,7 +938,7 @@ function addQuickTournament() {
       <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" class="qs-mvp" placeholder="0"></div>
       <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" class="qs-accuracy" placeholder="0"></div>
       <div class="field-group"><span class="field-label">Рейтинг</span><input type="text" inputmode="decimal" class="qs-rating" placeholder="0.0"></div>
-      <div class="field-group"><label class="checkbox-row"><input type="checkbox" class="qs-boot"> 👟 Золотая бутса</label></div>
+      <div class="field-group"><label class="checkbox-row"><input type="checkbox" class="qs-boot"> 🥇 Золотая бутса</label></div>
     </div>
   `;
   container.appendChild(div);
@@ -1252,7 +1252,7 @@ function generate() {
     
     const seasonParts = [];
     if (seasonTotal.trophies > 0) seasonParts.push('🏆'.repeat(seasonTotal.trophies));
-    if (seasonTotal.goldenBoots > 0) seasonParts.push('👟'.repeat(seasonTotal.goldenBoots));
+    if (seasonTotal.goldenBoots > 0) seasonParts.push('🥇'.repeat(seasonTotal.goldenBoots));
     if (seasonTotal.goldenBall) seasonParts.push('⚽');
     seasonParts.push(`${seasonTotal.matches} матчей`);
     seasonParts.push(`${seasonTotal.goals} голов`);
