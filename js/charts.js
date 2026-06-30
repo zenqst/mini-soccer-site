@@ -3,16 +3,13 @@ const chartInstances = {};
 let currentFormTournament = null;
 
 function getChartColors() {
-  const bg = getComputedStyle(document.body).backgroundColor;
-  const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  const luminance = match ? (0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]) / 255 : 0.95;
-  const dark = luminance < 0.4;
+  const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   return {
-    text: dark ? '#e5e5e5' : '#1a1a1a',
-    textMuted: dark ? '#a0a0a0' : '#737373',
+    text: dark ? '#e0e0e0' : '#1a1a1a',
+    textMuted: dark ? '#888' : '#737373',
     grid: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
-    tooltipBg: dark ? '#333' : '#1a1a1a',
-    emptyBar: dark ? '#444' : '#e5e5e5'
+    tooltipBg: dark ? '#2a2a2a' : '#1a1a1a',
+    emptyBar: dark ? '#333' : '#e5e5e5'
   };
 }
 
