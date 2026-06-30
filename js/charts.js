@@ -406,8 +406,6 @@ function renderCareer() {
   const h2h = {};
   const seasonHistory = [];
   const tournamentStats = {};
-  let firstMatchSeason = null, firstWinSeason = null, firstTrophySeason = null;
-  const seasonMatchYears = [], seasonWinYears = [], seasonTrophyYears = [];
 
   seasons.forEach((s, sIdx) => {
     const sTeams = new Set();
@@ -509,14 +507,7 @@ function renderCareer() {
     }
 
     seasonHistory.push({ year: s.year, matches: sMatches, goals: sGoals, assists: sAssists, wins: sWins, draws: sDraws, losses: sLosses, rating: avgRating, championships: sChampionships, teams: sTeams.size });
-    if (sMatches > 0) seasonMatchYears.push(Number(s.year));
-    if (sWins > 0) seasonWinYears.push(Number(s.year));
-    if (sChampionships > 0) seasonTrophyYears.push(Number(s.year));
   });
-
-  firstMatchSeason = seasonMatchYears.length > 0 ? Math.min(...seasonMatchYears) : null;
-  firstWinSeason = seasonWinYears.length > 0 ? Math.min(...seasonWinYears) : null;
-  firstTrophySeason = seasonTrophyYears.length > 0 ? Math.min(...seasonTrophyYears) : null;
 
   const myTeams = Object.values(myTeamsMap).sort((a, b) => Math.max(...b.seasons.map(Number)) - Math.max(...a.seasons.map(Number)));
   const avgRatingAll = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : '—';
@@ -578,27 +569,6 @@ function renderCareer() {
           const label = t.type === 'champ' ? '' : t.type === 'silver' ? ' — 2 место' : t.type === 'boot' ? '' : t.type === 'ball' ? '' : '';
           return `<div class="career-trophy${cls}"><span class="emoji">${escapeHtml(t.emoji)}</span><span class="text">${escapeHtml(t.name)}${label} (${t.season})</span></div>`;
         }).join('')}
-      </div>
-    </div>`;
-  }
-
-  const milestones = [];
-  if (firstMatchSeason) milestones.push({ icon: '🏟️', text: `Первая игра — ${firstMatchSeason}` });
-  if (firstWinSeason) milestones.push({ icon: '✅', text: `Первая победа — ${firstWinSeason}` });
-  if (firstTrophySeason) milestones.push({ icon: '🏆', text: `Первый трофей — ${firstTrophySeason}` });
-  if (totalGoals >= 100) milestones.push({ icon: '💯', text: `100+ голов (${totalGoals})` });
-  else if (totalGoals >= 50) milestones.push({ icon: '⚽', text: `50+ голов (${totalGoals})` });
-  if (totalMatches >= 100) milestones.push({ icon: '💯', text: `100+ матчей (${totalMatches})` });
-  else if (totalMatches >= 50) milestones.push({ icon: '🏟️', text: `50+ матчей (${totalMatches})` });
-  if (totalChampionships >= 5) milestones.push({ icon: '👑', text: `${totalChampionships} чемпионств — легенда!` });
-  else if (totalChampionships >= 3) milestones.push({ icon: '🏆', text: `${totalChampionships} чемпионства` });
-  if (bestRating >= 9) milestones.push({ icon: '⭐', text: `Рейтинг ${bestRating} — идеально!` });
-
-  if (milestones.length > 0) {
-    html += `<div class="career-section">
-      <div class="career-section-title">🎯 Вехи</div>
-      <div class="career-grid">
-        ${milestones.map(m => `<div class="career-stat"><div class="label">${m.icon}</div><div class="value" style="font-size:14px;">${m.text}</div></div>`).join('')}
       </div>
     </div>`;
   }
