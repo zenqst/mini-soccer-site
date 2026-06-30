@@ -177,7 +177,7 @@ function renderTeams(key) {
       <div style="display:flex; gap:8px; align-items:center;">
         <select data-field="teamId" data-focus-id="team-${key}-${idx}-id" style="flex:1;">
           <option value="">Выбери команду</option>
-          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+          ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === teamEntry.teamId ? 'selected' : ''}>${gt.flag ? flagHtml(gt.flag) + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
         </select>
         ${badge}
         <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
@@ -426,7 +426,7 @@ function updateTeamSelects(key) {
       const currentVal = select.value;
       select.innerHTML = `
         <option value="">Выбери команду</option>
-        ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
+        ${getSortedTeams(key).map(gt => `<option value="${gt.id}" ${gt.id === currentVal ? 'selected' : ''}>${gt.flag ? flagHtml(gt.flag) + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}${gt.isMe ? ' ★' : ''}</option>`).join('')}
       `;
     }
   });
@@ -508,7 +508,7 @@ function renderPlayoffMatches(key) {
           <span class="field-label">Соперник</span>
           <select data-idx="${idx}" data-field="opponentTeamId" data-focus-id="po-${key}-${idx}-opp">
             <option value="">— выбери —</option>
-            ${getSortedTeams(key).filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? gt.flag + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
+            ${getSortedTeams(key).filter(gt => !gt.isMe).map(gt => `<option value="${gt.id}" ${gt.id === match.opponentTeamId ? 'selected' : ''}>${gt.flag ? flagHtml(gt.flag) + ' ' : ''}${escapeHtml(gt.name || '(без названия)')}</option>`).join('')}
           </select>
         </div>
         <div class="field-group">
@@ -895,7 +895,7 @@ function openQuickSeasonModal() {
   try {
     quickTournamentCount = 0;
     const teamSelect = document.getElementById('qs-team');
-    teamSelect.innerHTML = globalTeams.map(t => `<option value="${t.id}">${t.flag || ''} ${escapeHtml(t.name)}${t.isMe ? ' ★' : ''}</option>`).join('');
+    teamSelect.innerHTML = globalTeams.map(t => `<option value="${t.id}">${t.flag ? flagHtml(t.flag) + ' ' : ''}${escapeHtml(t.name)}${t.isMe ? ' ★' : ''}</option>`).join('');
     document.getElementById('qs-year').value = seasons.length > 0 ? (Math.max(...seasons.map(s => Number(s.year))) + 1) : 2025;
     document.getElementById('qs-tournaments').innerHTML = '';
     addQuickTournament();
@@ -987,7 +987,7 @@ function saveQuickSeason() {
     
     const preset = isCustom ? null : TOURNAMENT_PRESETS.find(p => p.name === name);
     const key = 'quick_' + year + '_' + idx;
-    const rounds = preset ? preset.rounds : matches;
+    const rounds = matches;
     const hasPlayoff = preset ? preset.hasPlayoff : (result !== 'other');
     
     newTournaments[key] = emptyTournament(emoji, name, rounds, hasPlayoff, preset?.format || 'single');

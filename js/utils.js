@@ -16,6 +16,15 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function flagHtml(flag) {
+  if (!flag) return '';
+  return [...flag].map(ch => {
+    const cp = ch.codePointAt(0);
+    if (cp >= 0xE0020 && cp <= 0xE007F) return `&#x${cp.toString(16)};`;
+    return ch;
+  }).join('');
+}
+
 // ============ КУКИ ============
 function setCookie(name, value, days) {
   const d = new Date();

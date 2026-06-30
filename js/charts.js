@@ -558,7 +558,7 @@ function renderCareer() {
       <div class="career-section-title">⚽ Мои команды</div>
       ${myTeams.map(team => `
         <div class="career-row">
-          <div class="flag">${team.flag || '🏳️'}</div>
+          <div class="flag">${flagHtml(team.flag) || '🏳️'}</div>
           <div class="info">
             <div class="name">${escapeHtml(team.name)}</div>
             <div class="meta">Сезоны: ${formatSeasons(team.seasons)}</div>
