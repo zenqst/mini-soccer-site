@@ -471,14 +471,11 @@ function renderCareer() {
           (t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win' || t.playoffMatches[t.playoffMatches.length - 1]?.result === 'loss');
         if ((matchesPlayed > 0 || hasFinalResult) && isTournamentFinishedForSeason(s, key)) {
           const rank = t.teams.indexOf(myEntry) + 1;
-          const isChamp = (rank === 1 && !t.hasPlayoff) ||
-            (t.hasPlayoff && t.playoffMatches?.length > 0 &&
-             t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
-             t.playoffMatches[t.playoffMatches.length - 1]?.result === 'win');
-          const isSilver = (rank === 2 && !t.hasPlayoff) ||
-            (t.hasPlayoff && t.playoffMatches?.length > 0 &&
-             t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final' &&
-             t.playoffMatches[t.playoffMatches.length - 1]?.result === 'loss');
+          const lastFinal = (t.playoffMatches?.length > 0 &&
+            t.playoffMatches[t.playoffMatches.length - 1]?.round === 'Final')
+            ? t.playoffMatches[t.playoffMatches.length - 1] : null;
+          const isChamp = lastFinal ? lastFinal.result === 'win' : (rank === 1 && !t.hasPlayoff);
+          const isSilver = lastFinal ? lastFinal.result === 'loss' : (rank === 2 && !t.hasPlayoff);
           if (isChamp) {
             sChampionships++;
             trophies.push({ emoji: t.emoji, name: t.name, season: s.year, type: 'champ' });
