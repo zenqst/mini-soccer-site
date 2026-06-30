@@ -1239,7 +1239,7 @@ function generate() {
       const achievement = getAchievement(key);
       if (achievement === 'Чемпионство') seasonTotal.trophies++;
       if (t.topScorer === 1) seasonTotal.goldenBoots++;
-      if (s.goldenBall) seasonTotal.goldenBall = true;
+      if (t.goldenBall) seasonTotal.goldenBall = true;
       seasonTotal.matches += getTotalMatches(key);
       seasonTotal.goals += t.summary.goals;
       seasonTotal.assists += t.summary.assists;
