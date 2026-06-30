@@ -1112,9 +1112,24 @@ function normalizeTournament(v) {
   };
 }
 
+function fixCorruptedJson(text) {
+  let fixed = text;
+  // Fix chunk-boundary corruption: "key"": -> "key":
+  // Extra quote between property key and colon
+  fixed = fixed.replace(/"(\w+)""\s*:/g, '"$1":');
+  return fixed;
+}
+
 function doImport(text) {
   try {
-    const data = JSON.parse(text);
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch(e1) {
+      const fixed = fixCorruptedJson(text);
+      parsed = JSON.parse(fixed);
+    }
+    const data = parsed;
     
     if (data.tournaments && data.tournamentOrder && !data.seasons) {
       const year = new Date().getFullYear();
