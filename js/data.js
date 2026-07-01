@@ -1,4 +1,19 @@
 // ============ ФЛАГИ СТРАН ============
+const APP_VERSION = '2.18.0';
+const CHANGELOG = [
+  { version: '2.18.0', changes: [
+    'H2H: глобальное отключение + отключение по турнирам',
+    'Новая формула рейтинга: 4.5 + ((1.8×Голы + 1.2×Ассисты + 3×МВП) / Матчи) × (Точность + 0.35)',
+    'Плейсхолдер "0" вместо значения по умолчанию во всех полях ввода',
+    'Исправлен баг: золотая бутса теперь отображается в плашке результатов',
+    'Модалка changelog при обновлении версии',
+    'Интерактивный пошаговый гайд вместо статичной плашки',
+    'Запрет дубликатов команд — теперь проверяется только имя'
+  ]},
+  { version: '2.17.5', changes: [
+    'Пагинация трофеев в карьере (показ 5, кнопка "показать ещё")'
+  ]}
+];
 const _tag = (s) => String.fromCodePoint(...[...s].map(c => 0xE0000 + c.charCodeAt(0)));
 const FLAG_ENGLAND = '🏴' + _tag('gbeng') + String.fromCodePoint(0xE007F);
 const FLAG_SCOTLAND = '🏴' + _tag('gbsct') + String.fromCodePoint(0xE007F);
@@ -222,6 +237,7 @@ function applyPreset(idx) {
 let tournamentOrder = [];
 let globalTeams = [];
 const tournaments = {};
+let globalSettings = { showH2H: true };
 
 let seasons = [];
 let currentSeasonIdx = 0;
@@ -356,13 +372,11 @@ function calcAutoRating(key) {
   const s = t.summary || {};
   const total = my.entry.w + my.entry.d + my.entry.l;
   if (total === 0) return 0;
-  let rating = 5.0;
-  rating += (s.goals || 0) * 0.15;
-  rating += (s.assists || 0) * 0.1;
-  rating += (s.mvp || 0) * 0.3;
-  rating += (my.entry.w / total) * 2.0;
-  const achievement = getAchievement(key);
-  if (achievement === 'Чемпионство') rating += 0.5;
+  const goals = s.goals || 0;
+  const assists = s.assists || 0;
+  const mvp = s.mvp || 0;
+  const accuracy = (s.accuracy || 0) / 100;
+  const rating = 4.5 + (((1.8 * goals) + (1.2 * assists) + (3 * mvp)) / total) * (accuracy + 0.35);
   return Math.round(Math.min(10, Math.max(1, rating)) * 10) / 10;
 }
 
@@ -492,7 +506,8 @@ function buildCurrentSeasonData() {
   return {
     tournamentOrder: [...tournamentOrder],
     tournaments: JSON.parse(JSON.stringify(tournaments)),
-    globalTeams: JSON.parse(JSON.stringify(globalTeams))
+    globalTeams: JSON.parse(JSON.stringify(globalTeams)),
+    globalSettings: JSON.parse(JSON.stringify(globalSettings))
   };
 }
 
@@ -502,6 +517,7 @@ function syncCurrentSeason() {
   seasons[currentSeasonIdx].tournamentOrder = data.tournamentOrder;
   seasons[currentSeasonIdx].tournaments = data.tournaments;
   seasons[currentSeasonIdx].globalTeams = data.globalTeams;
+  seasons[currentSeasonIdx].globalSettings = data.globalSettings;
 }
 
 // ============ INDEXED DB ============
@@ -517,6 +533,7 @@ function applyData(data) {
     tournaments[k] = JSON.parse(JSON.stringify(v));
   }
   globalTeams = JSON.parse(JSON.stringify(s.globalTeams || []));
+  globalSettings = JSON.parse(JSON.stringify(s.globalSettings || { showH2H: true }));
   return true;
 }
 

@@ -84,6 +84,12 @@ function autoRate(key) {
   showToast(`Рейтинг: ${t.summary.rating}`);
 }
 
+function toggleGlobalH2H(val) {
+  globalSettings.showH2H = val;
+  debouncedSave();
+  showToast(val ? 'H2H включён везде' : 'H2H отключён везде');
+}
+
 function toggleGroupCollapse(key) {
   const t = tournaments[key];
   t.groupCollapsed = !t.groupCollapsed;
@@ -126,6 +132,7 @@ function renderTopStats(key) {
       const val = e.target.value === '' ? null : parseIntSafe(e.target.value);
       if (field === 'topScorer') t.topScorer = val;
       else if (field === 'topAssist') t.topAssist = val;
+      renderSummary(key);
       debouncedSave();
     });
   });
@@ -186,15 +193,15 @@ function renderTeams(key) {
         <button class="btn btn-danger btn-sm" onclick="removeTeam('${key}', ${idx})">✕</button>
       </div>
       <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
-        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Победы</span><input type="text" inputmode="numeric" value="${teamEntry.w}" data-field="w" data-focus-id="team-${key}-${idx}-w"></div>
-        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Ничьи</span><input type="text" inputmode="numeric" value="${teamEntry.d}" data-field="d" data-focus-id="team-${key}-${idx}-d"></div>
-        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Поражения</span><input type="text" inputmode="numeric" value="${teamEntry.l}" data-field="l" data-focus-id="team-${key}-${idx}-l"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Победы</span><input type="text" inputmode="numeric" value="${teamEntry.w || ''}" placeholder="0" data-field="w" data-focus-id="team-${key}-${idx}-w"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Ничьи</span><input type="text" inputmode="numeric" value="${teamEntry.d || ''}" placeholder="0" data-field="d" data-focus-id="team-${key}-${idx}-d"></div>
+        <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Поражения</span><input type="text" inputmode="numeric" value="${teamEntry.l || ''}" placeholder="0" data-field="l" data-focus-id="team-${key}-${idx}-l"></div>
         <div class="field-group" style="flex:1; min-width:60px;"><span class="field-label">Очки</span><div class="points-display">${pts}</div></div>
       </div>
       <div class="fields">
-        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: П</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[0]}" data-field="h2h-w" data-focus-id="team-${key}-${idx}-h2hw"></div>
-        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: Н</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[1]}" data-field="h2h-d" data-focus-id="team-${key}-${idx}-h2hd"></div>
-        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: ПР</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[2]}" data-field="h2h-l" data-focus-id="team-${key}-${idx}-h2hl"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: П</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[0] || ''}" placeholder="0" data-field="h2h-w" data-focus-id="team-${key}-${idx}-h2hw"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: Н</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[1] || ''}" placeholder="0" data-field="h2h-d" data-focus-id="team-${key}-${idx}-h2hd"></div>
+        <div class="field-group h2h-row ${isMe ? 'h2h-hidden' : ''}"><span class="field-label">1-на-1: ПР</span><input type="text" inputmode="numeric" value="${teamEntry.h2h[2] || ''}" placeholder="0" data-field="h2h-l" data-focus-id="team-${key}-${idx}-h2hl"></div>
       </div>
       ${isMe ? '<div class="my-team-note">💡 Для вашей команды H2H не указывается</div>' : ''}
     `;
@@ -350,7 +357,7 @@ function renderGlobalTeams() {
         const teamId = globalTeams[i].id;
         if (field === 'name') {
           const newName = e.target.value;
-          const duplicate = globalTeams.find((t, j) => j !== i && t.name.toLowerCase() === newName.toLowerCase() && t.flag === globalTeams[i].flag);
+          const duplicate = globalTeams.find((t, j) => j !== i && t.name.toLowerCase() === newName.toLowerCase());
           if (duplicate && newName.trim()) {
             e.target.style.borderColor = 'var(--danger)';
             showToast('⚠️ Такая команда уже есть');
@@ -644,11 +651,11 @@ function renderSummary(key) {
       <div class="summary-title">${finished ? '📊 Итог турнира' : '📊 Мои показатели турнира'}</div>
       ${finished ? `<div class="summary-text">${escapeHtml(summaryText)}</div>` : ''}
       <div class="summary-fields">
-        <div class="field-group"><span class="field-label">Голы</span><input type="text" inputmode="numeric" value="${s.goals}" data-field="goals" data-focus-id="sum-${key}-goals"></div>
-        <div class="field-group"><span class="field-label">Ассисты</span><input type="text" inputmode="numeric" value="${s.assists}" data-field="assists" data-focus-id="sum-${key}-assists"></div>
-        <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" value="${s.mvp}" data-field="mvp" data-focus-id="sum-${key}-mvp"></div>
-        <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" value="${s.accuracy}" data-field="accuracy" data-focus-id="sum-${key}-accuracy"></div>
-        <div class="field-group"><span class="field-label">Рейтинг</span><div style="display:flex; gap:4px;"><input type="text" inputmode="decimal" value="${s.rating}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating" style="flex:1;"><button class="btn btn-sm" onclick="autoRate('${key}')" title="Рассчитать автоматически">🎲</button></div></div>
+        <div class="field-group"><span class="field-label">Голы</span><input type="text" inputmode="numeric" value="${s.goals || ''}" placeholder="0" data-field="goals" data-focus-id="sum-${key}-goals"></div>
+        <div class="field-group"><span class="field-label">Ассисты</span><input type="text" inputmode="numeric" value="${s.assists || ''}" placeholder="0" data-field="assists" data-focus-id="sum-${key}-assists"></div>
+        <div class="field-group"><span class="field-label">МВП</span><input type="text" inputmode="numeric" value="${s.mvp || ''}" placeholder="0" data-field="mvp" data-focus-id="sum-${key}-mvp"></div>
+        <div class="field-group"><span class="field-label">Точность %</span><input type="text" inputmode="numeric" value="${s.accuracy || ''}" placeholder="0" data-field="accuracy" data-focus-id="sum-${key}-accuracy"></div>
+        <div class="field-group"><span class="field-label">Рейтинг</span><div style="display:flex; gap:4px;"><input type="text" inputmode="decimal" value="${s.rating || ''}" data-field="rating" placeholder="0.0" data-focus-id="sum-${key}-rating" style="flex:1;"><button class="btn btn-sm" onclick="autoRate('${key}')" title="Рассчитать автоматически">🎲</button></div></div>
       </div>
     </div>
   `;
@@ -784,6 +791,8 @@ function deleteCurrentTournament() {
 
 function renderSettingsPanel() {
   renderSeasonsList();
+  const h2hCheckbox = document.getElementById('global-show-h2h');
+  if (h2hCheckbox) h2hCheckbox.checked = globalSettings.showH2H;
   const list = document.getElementById('tournament-list');
   list.innerHTML = '';
   tournamentOrder.forEach(key => {
@@ -1190,7 +1199,7 @@ function formatTeamLine(key, rank, teamEntry) {
   const name = globalTeam.name || '???';
   const flag = t.isInternational && globalTeam.flag ? globalTeam.flag + ' ' : '';
   const base = `${rank}. ${flag}${name}: ${teamEntry.w} / ${teamEntry.d} / ${teamEntry.l} (${pts})`;
-  if (globalTeam.isMe || !t.showH2H) return base;
+  if (globalTeam.isMe || !globalSettings.showH2H || !t.showH2H) return base;
   return `${base} [${teamEntry.h2h[0]} / ${teamEntry.h2h[1]} / ${teamEntry.h2h[2]}]`;
 }
 
@@ -1332,18 +1341,113 @@ async function resetAll() {
 }
 
 function showGuide() {
-  const guideHidden = getCookie('guide_hidden');
-  const banner = document.getElementById('guide-banner');
-  if (!guideHidden && banner) {
-    banner.style.display = tournamentOrder.length === 0 ? 'block' : 'none';
-  } else if (banner) {
-    banner.style.display = 'none';
+  // Tour system handles first-time guidance
+  const tourCompleted = getCookie('tour_completed');
+  if (!tourCompleted && tournamentOrder.length === 0) {
+    setTimeout(() => startTour(), 800);
   }
 }
 
 function closeGuide() {
-  setCookie('guide_hidden', '1', 365);
-  document.getElementById('guide-banner').style.display = 'none';
+  // Legacy — no longer needed
+}
+
+// ============ INTERACTIVE TOUR ============
+let tourSteps = [];
+let tourCurrentStep = 0;
+
+function getTourSteps() {
+  return [
+    { selector: '#panel-settings .settings-section:nth-child(3)', title: 'Добавь турнир', desc: 'Нажми «📦 Пресеты» для готовых шаблонов (АПЛ, Ла Лига, Лига Чемпионов...) или «+ Пустой» для создания с нуля.', position: 'bottom' },
+    { selector: '#panel-settings .settings-section:nth-child(2)', title: 'Добавь команды', desc: 'Создай команды: укажи название, флаг и отметь «Ваша» для своей команды.', position: 'bottom' },
+    { selector: '#main-tabs .tab:first-child', title: 'Перейди в турнир', desc: 'После добавления турнира появится вкладка. Переключись на неё.', position: 'bottom' },
+    { selector: '#main-actions .btn-primary', title: 'Сгенерируй результат', desc: 'Когда все данные заполнены, нажми «Сгенерировать» — появится готовый текст.', position: 'top' },
+    { selector: '#main-actions .btn:not(.btn-primary):not(.btn-danger)', title: 'Скопируй', desc: 'Нажми «Копировать» и вставь текст куда угодно — в чат, соцсеть, заметки.', position: 'top' }
+  ];
+}
+
+function startTour() {
+  const steps = getTourSteps();
+  tourSteps = steps.filter(s => document.querySelector(s.selector));
+  if (tourSteps.length === 0) return;
+  tourCurrentStep = 0;
+  document.getElementById('tour-overlay').style.display = 'block';
+  renderTourStep();
+}
+
+function renderTourStep() {
+  const step = tourSteps[tourCurrentStep];
+  if (!step) { finishTour(); return; }
+
+  const el = document.querySelector(step.selector);
+  if (!el) { finishTour(); return; }
+
+  // Highlight element
+  const overlay = document.getElementById('tour-overlay');
+  overlay.innerHTML = '';
+  const rect = el.getBoundingClientRect();
+  const highlight = document.createElement('div');
+  highlight.style.cssText = `position:absolute;top:${rect.top - 4}px;left:${rect.left - 4}px;width:${rect.width + 8}px;height:${rect.height + 8}px;border:2px solid var(--accent);background:rgba(0,0,0,0.3);z-index:1;`;
+  overlay.appendChild(highlight);
+
+  // Set tooltip content
+  document.getElementById('tour-step-title').textContent = step.title;
+  document.getElementById('tour-step-desc').textContent = step.desc;
+
+  // Position tooltip
+  const tooltip = document.getElementById('tour-tooltip');
+  const tooltipRect = tooltip.getBoundingClientRect();
+  let top, left;
+  if (step.position === 'top') {
+    top = rect.top - tooltipRect.height - 16;
+    left = rect.left + (rect.width - tooltipRect.width) / 2;
+  } else {
+    top = rect.bottom + 16;
+    left = rect.left + (rect.width - tooltipRect.width) / 2;
+  }
+  left = Math.max(16, Math.min(left, window.innerWidth - tooltipRect.width - 16));
+  top = Math.max(16, Math.min(top, window.innerHeight - tooltipRect.height - 16));
+  tooltip.style.top = top + 'px';
+  tooltip.style.left = left + 'px';
+  tooltip.style.display = 'block';
+
+  // Update progress dots
+  const progress = document.getElementById('tour-progress');
+  progress.innerHTML = tourSteps.map((_, i) => `<span style="width:8px;height:8px;border-radius:50%;background:${i === tourCurrentStep ? 'var(--accent)' : 'var(--border)'};"></span>`).join('');
+
+  // Update button text
+  const nextBtn = document.getElementById('tour-next-btn');
+  nextBtn.textContent = tourCurrentStep === tourSteps.length - 1 ? 'Готово' : 'Далее';
+}
+
+function nextTourStep() {
+  tourCurrentStep++;
+  if (tourCurrentStep >= tourSteps.length) {
+    finishTour();
+  } else {
+    renderTourStep();
+  }
+}
+
+function skipTour() {
+  finishTour();
+}
+
+function finishTour() {
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-tooltip').style.display = 'none';
+  setCookie('tour_completed', '1', 365);
+}
+
+function openChangelog(version, changes) {
+  document.getElementById('changelog-version').textContent = version;
+  document.getElementById('changelog-body').innerHTML = changes.map(c => `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:14px;"><span style="color:var(--text-muted);">•</span><span>${escapeHtml(c)}</span></div>`).join('');
+  document.getElementById('changelog-modal').classList.add('show');
+}
+
+function closeChangelog() {
+  document.getElementById('changelog-modal').classList.remove('show');
+  try { localStorage.setItem('lastSeenVersion', APP_VERSION); } catch(e) {}
 }
 
 function fullRender() {

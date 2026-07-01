@@ -25,16 +25,18 @@
   
   <div class="tabs" id="main-tabs"></div>
   
-  <div id="guide-banner" style="display:none;">
-    <div class="guide-banner">
-      <button class="guide-close" onclick="closeGuide()" title="Скрыть">&times;</button>
-      <div class="guide-title">👋 Добро пожаловать! Как пользоваться генератором:</div>
-      <div class="guide-steps">
-        <div class="guide-step"><span class="guide-step-num">1</span><span>Перейди в <b>⚙️ Настройки</b> и добавь команды (название, флаг, отметь «Ваша»)</span></div>
-        <div class="guide-step"><span class="guide-step-num">2</span><span>Добавь турнир: используй <b>📦 Пресеты</b> (АПЛ, Ла Лига, Лига Чемпионов...) или создай пустой</span></div>
-        <div class="guide-step"><span class="guide-step-num">3</span><span>В турнире добавь команды и заполни результаты (победы, ничьи, поражения)</span></div>
-        <div class="guide-step"><span class="guide-step-num">4</span><span>Заполни плей-офф (если есть) и итоги турнира</span></div>
-        <div class="guide-step"><span class="guide-step-num">5</span><span>Нажми <b>Сгенерировать</b> и <b>Копировать</b> — готовый текст можно вставить куда угодно!</span></div>
+  <div id="guide-banner" style="display:none;"></div>
+  
+  <!-- Tour overlay -->
+  <div id="tour-overlay" style="display:none;position:fixed;inset:0;z-index:200;"></div>
+  <div id="tour-tooltip" style="display:none;position:fixed;z-index:201;max-width:320px;background:var(--surface);border:1px solid var(--border);padding:20px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+    <div id="tour-step-title" style="font-size:15px;font-weight:600;margin-bottom:8px;"></div>
+    <div id="tour-step-desc" style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div id="tour-progress" style="display:flex;gap:6px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="skipTour()">Пропустить</button>
+        <button class="btn btn-sm btn-primary" id="tour-next-btn" onclick="nextTourStep()">Далее</button>
       </div>
     </div>
   </div>
@@ -148,6 +150,13 @@
       <div id="tournament-list"></div>
     </div>
     <div class="settings-section">
+      <div class="settings-section-title">⚙️ Настройки приложения</div>
+      <div class="field-group" style="margin-bottom:8px;">
+        <label class="checkbox-row"><input type="checkbox" id="global-show-h2h" onchange="toggleGlobalH2H(this.checked)"> Показывать H2H везде (глобально)</label>
+      </div>
+      <button class="btn btn-sm" onclick="startTour()">Показать гайд</button>
+    </div>
+    <div class="settings-section">
       <div class="settings-section-title">💾 Данные</div>
       <div class="actions" style="margin-top:0;">
         <button class="btn btn-primary" onclick="openDataModal('export')">📤 Экспорт</button>
@@ -175,7 +184,7 @@
   </div>
   
   <footer style="margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
-    <span>Генератор турнирных таблиц v2.17.5</span>
+    <span>Генератор турнирных таблиц v2.18.0</span>
     <span>Данные сохраняются автоматически</span>
   </footer>
 </div>
@@ -359,6 +368,20 @@
 </div>
 
 <div class="toast" id="toast">Скопировано</div>
+
+<!-- Модалка changelog -->
+<div class="modal-overlay" id="changelog-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Обновление до v<span id="changelog-version"></span></div>
+      <button class="modal-close" onclick="closeChangelog()">×</button>
+    </div>
+    <div class="modal-body" id="changelog-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeChangelog()">Понятно</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/utils.js"></script>
 <script src="js/data.js"></script>

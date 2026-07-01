@@ -72,6 +72,15 @@
     console.log('Data loaded from:', loadSource);
   }
 
+  // Check for changelog update
+  try {
+    const lastSeen = localStorage.getItem('lastSeenVersion');
+    if (lastSeen !== APP_VERSION && CHANGELOG.length > 0) {
+      const latest = CHANGELOG[0];
+      setTimeout(() => openChangelog(latest.version, latest.changes), 500);
+    }
+  } catch(e) {}
+
   window.addEventListener('error', function(e) {
     const banner = document.getElementById('guide-banner');
     if (banner) {
@@ -89,5 +98,6 @@
   document.getElementById('presets-modal').addEventListener('click', (e) => { if (e.target.id === 'presets-modal') closePresetsModal(); });
   document.getElementById('team-manager-modal').addEventListener('click', (e) => { if (e.target.id === 'team-manager-modal') closeTeamManager(); });
   document.getElementById('quick-season-modal').addEventListener('click', (e) => { if (e.target.id === 'quick-season-modal') closeQuickSeasonModal(); });
+  document.getElementById('changelog-modal').addEventListener('click', (e) => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   window.addEventListener('beforeunload', () => { saveToDB(); });
 })();

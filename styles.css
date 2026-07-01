@@ -250,6 +250,11 @@
   .guide-close { float: right; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); padding: 0 4px; line-height: 1; }
   .guide-close:hover { color: var(--text); }
 
+  #changelog-modal .modal-body { font-size: 14px; line-height: 1.6; }
+
+  #tour-tooltip { border-radius: 4px; }
+  #tour-overlay div:first-child { border-radius: 4px; }
+
   .career-section { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
   .career-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
   .career-grid { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
